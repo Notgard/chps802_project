@@ -14,6 +14,7 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
+    int s;
     char * filename = argv[1];
 
     //create a default empty linear system structure in which to store the contents read from the input file
@@ -21,13 +22,22 @@ int main(int argc, char *argv[])
 
     read_linear_system_from_file(filename, &linear_system);
 
-    swap_linear_system_rows(&linear_system, 0, 1);
-
+    //swap_linear_system_rows(&linear_system, 0, 1);
     print_linear_system_matrix(&linear_system);
 
+    linear_system_propagation(&linear_system);
+
+    double * solutions = solve_linear_system(&linear_system);
+
+    for(s = 0; s < linear_system.nb_unknowns; s++) {
+        printf("x%d = %.3lf\n", s+1, solutions[s]);
+    }
+    
     write_linear_system_to_file(OUT_FILE, &linear_system);
     
     clean_linear_system_memory(&linear_system);
 
-    return 0;
+    free(solutions);
+
+    return EXIT_SUCCESS;
 }

@@ -54,4 +54,14 @@ void linear_system_propagation(linear_system_t * linear_system);
 /// @param linear_system the given linear system
 void print_linear_system_matrix(linear_system_t * linear_system);
 
+/// @brief Application de la technique de pivot
+/// @param linear_system le système linéaire 
+/// @param pivot_line la ligne du pivot choisi dans le système linéaire
+void apply_pivot(linear_system_t * linear_system, int pivot_line);
+
+/// @brief Solves the linear system
+/// @param linear_system the given linear system
+/// @return the solutions to the linear system inside an array
+double * solve_linear_system(linear_system_t * linear_system);
+
 #endif

@@ -109,7 +109,7 @@ void write_linear_system_to_file(char *output_filename, linear_system_t *linear_
                 char buffer[20]; // Assuming a maximum length of the printed number
                 double truncate_value = linear_system->storage[i][j];
 
-                sprintf(buffer, "%.2lf", truncate_value);
+                sprintf(buffer, "%.3lf", truncate_value);
 
                 if ((status = fprintf(file, "%s ", buffer + 1)) == EOF)
                 {
@@ -120,7 +120,7 @@ void write_linear_system_to_file(char *output_filename, linear_system_t *linear_
             else
             {
                 // write the contents of the linear system matrix into the output file
-                if ((status = fprintf(file, "%.2lf ", linear_system->storage[i][j])) == EOF)
+                if ((status = fprintf(file, "%.3lf ", linear_system->storage[i][j])) == EOF)
                 {
                     perror("Can't write linear system to output file");
                     exit(EXIT_FAILURE);
@@ -150,15 +150,14 @@ void clean_linear_system_memory(linear_system_t *linear_system)
     free(linear_system->data);
 }
 
-
 /// @brief Finds the pivot used in the currently provided linear system using a partial pivot strategy
 /// @param linear_system the linear system
-/// @param current_line 
+/// @param current_line
 /// @param pivot_line
 /// @return the pivot
-double select_current_pivot(linear_system_t *linear_system, int current_line, int * pivot_line)
+double select_current_pivot(linear_system_t *linear_system, int current_line, int *pivot_line)
 {
-    /*     
+    /*
         int x, y;
         double max = INT_MIN;
         double abs_max;
@@ -185,26 +184,21 @@ double select_current_pivot(linear_system_t *linear_system, int current_line, in
 
         *row = r;
         *col = c; */
-
-    int r = -1, c = -1;
     int y;
 
     int nb_matrix_rows = linear_system->nb_unknowns;
 
     double pivot = 0;
-    double p = linear_system->storage[current_line][current_line]; //pivot in diagonal
-    for (y = current_line + 1; y < nb_matrix_rows; y++) //check for max value in same column
+    double p = linear_system->storage[current_line][current_line]; // pivot in diagonal
+
+    for (y = current_line + 1; y < nb_matrix_rows; y++)            // check for max value in same column
     {
         pivot = MAX(p, linear_system->storage[y][current_line]);
+        if(p != pivot) *pivot_line = y;
         p = pivot;
     }
 
-    for(y = 0; y < nb_matrix_rows; y++) {
-        if(linear_system->storage[y][current_line] == pivot)
-            *pivot_line = y;
-    }
-
-    return linear_system->storage[r][c];
+    return p;
 }
 
 /// @brief Swaps row1 with row2 and vice versa from the given linear system
@@ -230,21 +224,38 @@ void swap_linear_system_rows(linear_system_t *linear_system, int row1, int row2)
 /// @param linear_system
 void linear_system_propagation(linear_system_t *linear_system)
 {
-    int y;
+    int curr_line;
 
     int nb_matrix_rows = linear_system->nb_unknowns;
-    int nb_matrix_cols = nb_matrix_rows + 1;
 
     double pivot;
     int pivot_line;
-    for(y = 0; nb_matrix_rows; y++) {
-        //selection du pivot pour chaque ligne de la matrice augmentée du systeme lineaire
-        pivot = select_current_pivot(linear_system, y, &pivot_line);
 
-        //changement de ligne pour que le pivot soit sur la diagonale
+    for (curr_line = 0; curr_line < nb_matrix_rows; curr_line++)
+    {
+        printf("Starting at line %d\n", curr_line);
+        pivot_line = curr_line;
+        
+        // selection du pivot pour chaque ligne de la matrice augmentée du systeme lineaire
+        pivot = select_current_pivot(linear_system, curr_line, &pivot_line);
+        
+        printf("\n[Ligne %d]Valeur de pivot trouvée: %.3lf à la ligne %d\n",
+               curr_line,
+               pivot,
+               pivot_line);
 
-        //pivotage de la matrice
-        //A[i][j] = A[i][j] - ( (A[i][pi] / A[pi][pi]) * A[pi][j] )
+        // changement de ligne pour que le pivot soit sur la diagonale
+        if (pivot_line != curr_line)
+        {
+            swap_linear_system_rows(linear_system, curr_line, pivot_line);
+            print_linear_system_matrix(linear_system);
+        }
+
+        // pivotage de la matrice
+        // A[i][j] = A[i][j] - ( (A[i][pi] / A[pi][pi]) * A[pi][j] )
+        apply_pivot(linear_system, curr_line);
+        printf("après pivot\n");
+        print_linear_system_matrix(linear_system);
     }
 }
 
@@ -261,8 +272,72 @@ void print_linear_system_matrix(linear_system_t *linear_system)
     {
         for (j = 0; j < nb_matrix_cols; j++)
         {
-            printf("%lf ", linear_system->storage[i][j]);
+            printf("%.3lf ", linear_system->storage[i][j]);
         }
         printf("\n");
     }
+}
+
+/// @brief Application de la technique de pivot
+/// @param linear_system le système linéaire
+/// @param pivot_line la ligne du pivot choisi dans le système linéaire
+void apply_pivot(linear_system_t *linear_system, int pivot_line)
+{
+    int i, j;
+
+    int nb_matrix_rows = linear_system->nb_unknowns;
+
+    int lcol = linear_system->nb_unknowns; // the last column in the linear system matrix
+
+    for (i = pivot_line + 1; i < nb_matrix_rows; i++)
+    {
+        for (j = pivot_line + 1; j < nb_matrix_rows; j++)
+        {
+            //A[i][j] = A[i][j] - ( (A[i][pi] / A[pi][pi]) * A[pi][j] )
+            linear_system->storage[i][j]=linear_system->storage[i][j]-((linear_system->storage[i][pivot_line]/linear_system->storage[pivot_line][pivot_line])*linear_system->storage[pivot_line][j]);
+        }
+        //A[i][dim-1]=A[i][dim-1]-((A[i][pi]/A[pi][pi])*A[pi][dim-1])
+        linear_system->storage[i][lcol] = 
+        linear_system->storage[i][lcol] - (
+            (linear_system->storage[i][pivot_line] / linear_system->storage[pivot_line][pivot_line]
+            ) * linear_system->storage[pivot_line][lcol]
+        );
+        linear_system->storage[i][pivot_line]=0;
+    }
+}
+
+/// @brief Solves the linear system
+/// @param linear_system the given linear system
+/// @return the solutions to the linear system inside an array
+double * solve_linear_system(linear_system_t * linear_system) {
+    int j = 0;
+    double result = 0;
+
+    int nb_matrix_rows = linear_system->nb_unknowns;
+    int nb_matrix_cols = nb_matrix_rows + 1;
+
+    double * solutions = (double*)calloc(linear_system->nb_unknowns, sizeof(double));
+    if(solutions == NULL) {
+        fprintf(stderr, "Out of memory\n");
+        exit(EXIT_FAILURE);
+    }
+    
+    for (int i = nb_matrix_rows - 1; i >= 0; i--)
+    { // commencer à la dernière ligne
+        result=0;
+        for (j = i; j < nb_matrix_cols-1; j++)
+        {
+            printf("i: %d, j: %d\n", i, j);
+            if (i != j) {
+                //result += A[i][j] * R[j]
+                result += linear_system->storage[i][j] * solutions[j];
+                printf("in: %lf %lf\n", linear_system->storage[i][j], solutions[j]);
+            }
+            printf("%lf\n", result);
+        }
+        //R[i]=(A[i][dim-1]-result)/A[i][i]
+        solutions[i] = (linear_system->storage[i][nb_matrix_cols-1]-result)/linear_system->storage[i][i];
+        //X.at(i) = (B.at(i) - result) / A.at(i).at(i);
+    }
+    return solutions;
 }
