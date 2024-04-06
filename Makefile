@@ -28,7 +28,7 @@ OPTIMIZER_FLAGS = -O3
 CCFLAGS_STD = -Wall -Wextra -pedantic -Wshadow $(OPTIMIZER_FLAGS)
 CCFLAGS_DEBUG = -D _DEBUG_
 CCFLAGS = $(CCFLAGS_STD)
-CCLIBS =
+CCLIBS = -lm
 
 #
 # RULES (must not change it)

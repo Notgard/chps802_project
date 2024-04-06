@@ -3,6 +3,12 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <limits.h>
+
+#include <math.h>
+
+#define MIN(a, b) (a < b) ? a : b
+#define MAX(a, b) (a > b) ? a : b
 
 /// @brief linear system wrapper structure which contains the system matrix as a 1D array (data) 
 ///        and a pointer array (storage) to facilitate access to elements inside the linear system matrix
@@ -18,7 +24,7 @@ typedef struct linear_system_t {
 /// @param linear_system the linear system to create from the given file
 void read_linear_system_from_file(char * input_filename, linear_system_t * linear_system);
 
-/// @brief frees the memory from the linear system structure members
+/// @brief Frees the memory from the linear system structure members
 /// @param linear_system 
 void clean_linear_system_memory(linear_system_t * linear_system);
 
@@ -26,5 +32,26 @@ void clean_linear_system_memory(linear_system_t * linear_system);
 /// @param output_filename the ouput file's path
 /// @param linear_system the linear system to write into the given output_file
 void write_linear_system_to_file(char * output_filename, linear_system_t * linear_system);
+
+/// @brief Finds the pivot used in the currently provided linear system using a partial pivot strategy
+/// @param linear_system the linear system
+/// @param current_line 
+/// @param pivot_line
+/// @return the pivot
+double select_current_pivot(linear_system_t *linear_system, int current_line, int * pivot_line);
+
+/// @brief Swaps row1 with row2 and vice versa from the given linear system
+/// @param linear_system_t the linear system
+/// @param row1 row index to swap with row2
+/// @param row2 row index to swap with row1
+void swap_linear_system_rows(linear_system_t * linear_system, int row1, int row2);
+
+/// @brief 
+/// @param linear_system 
+void linear_system_propagation(linear_system_t * linear_system);
+
+/// @brief Prints the contents of the linear system matrix
+/// @param linear_system the given linear system
+void print_linear_system_matrix(linear_system_t * linear_system);
 
 #endif

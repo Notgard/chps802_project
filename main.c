@@ -21,8 +21,12 @@ int main(int argc, char *argv[])
 
     read_linear_system_from_file(filename, &linear_system);
 
-    write_linear_system_to_file(OUT_FILE, &linear_system);
+    swap_linear_system_rows(&linear_system, 0, 1);
 
+    print_linear_system_matrix(&linear_system);
+
+    write_linear_system_to_file(OUT_FILE, &linear_system);
+    
     clean_linear_system_memory(&linear_system);
 
     return 0;
