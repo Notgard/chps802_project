@@ -194,7 +194,7 @@ double select_current_pivot(linear_system_t *linear_system, int current_line, in
     for (y = current_line + 1; y < nb_matrix_rows; y++)            // check for max value in same column
     {
         pivot = MAX(p, linear_system->storage[y][current_line]);
-        if(p != pivot) *pivot_line = y;
+        if(p != pivot) *pivot_line = y; //if the current pivot is updated, we update the line the pivot is on
         p = pivot;
     }
 
@@ -254,7 +254,7 @@ void linear_system_propagation(linear_system_t *linear_system)
         // pivotage de la matrice
         // A[i][j] = A[i][j] - ( (A[i][pi] / A[pi][pi]) * A[pi][j] )
         apply_pivot(linear_system, curr_line);
-        printf("après pivot\n");
+        printf("\naprès pivot:\n");
         print_linear_system_matrix(linear_system);
     }
 }
@@ -316,6 +316,7 @@ double * solve_linear_system(linear_system_t * linear_system) {
     int nb_matrix_rows = linear_system->nb_unknowns;
     int nb_matrix_cols = nb_matrix_rows + 1;
 
+    //allocate memory for the solutions array, initialized with zeros
     double * solutions = (double*)calloc(linear_system->nb_unknowns, sizeof(double));
     if(solutions == NULL) {
         fprintf(stderr, "Out of memory\n");
@@ -327,17 +328,13 @@ double * solve_linear_system(linear_system_t * linear_system) {
         result=0;
         for (j = i; j < nb_matrix_cols-1; j++)
         {
-            printf("i: %d, j: %d\n", i, j);
-            if (i != j) {
+            if (i != j) { //if the the two aren't the samen then an initial solution has been found
                 //result += A[i][j] * R[j]
                 result += linear_system->storage[i][j] * solutions[j];
-                printf("in: %lf %lf\n", linear_system->storage[i][j], solutions[j]);
             }
-            printf("%lf\n", result);
         }
         //R[i]=(A[i][dim-1]-result)/A[i][i]
         solutions[i] = (linear_system->storage[i][nb_matrix_cols-1]-result)/linear_system->storage[i][i];
-        //X.at(i) = (B.at(i) - result) / A.at(i).at(i);
     }
     return solutions;
 }

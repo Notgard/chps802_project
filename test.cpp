@@ -135,7 +135,7 @@ void resoudre(vector<vector<float>> A, vector<float> B, int dim, vector<float> X
             }
             cout << "what: " << result << endl;
         }
-        cout << i << " X[i]=" <<  B.at(i) 
+        cout << i << " X[i]=" <<  B.at(i) << endl;
         X.at(i) = (B.at(i) - result) / A.at(i).at(i);
     }
     cout << endl
