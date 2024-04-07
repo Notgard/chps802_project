@@ -4,11 +4,24 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <limits.h>
+#include <sys/time.h>
 
 #include <math.h>
 
-#define MIN(a, b) (a < b) ? a : b
-#define MAX(a, b) (a > b) ? a : b
+#define MAX(a,b)             \
+({                           \
+    __typeof__ (a) _a = (a); \
+    __typeof__ (b) _b = (b); \
+    _a > _b ? _a : _b;       \
+})
+
+#define MIN(a,b)             \
+({                           \
+    __typeof__ (a) _a = (a); \
+    __typeof__ (b) _b = (b); \
+    _a < _b ? _a : _b;       \
+})
+
 
 /// @brief linear system wrapper structure which contains the system matrix as a 1D array (data) 
 ///        and a pointer array (storage) to facilitate access to elements inside the linear system matrix
@@ -63,5 +76,8 @@ void apply_pivot(linear_system_t * linear_system, int pivot_line);
 /// @param linear_system the given linear system
 /// @return the solutions to the linear system inside an array
 double * solve_linear_system(linear_system_t * linear_system);
+
+// Get the current time in seconds since the Epoch
+double wtime(void);
 
 #endif

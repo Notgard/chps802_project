@@ -2,6 +2,7 @@
 #include <vector>
 #include <cmath>
 #include <fstream>
+#include <iomanip>
 using namespace std;
 
 void afficher(vector<vector<float>> A, vector<float> B, int dim);
@@ -39,7 +40,7 @@ void afficher(vector<vector<float>> A, vector<float> B, int dim)
     {
         for (int j = 0; j < dim; j++)
         {
-            cout << A.at(i).at(j) << "\t";
+            cout << setprecision(3) << A.at(i).at(j) << "\t";
         }
         cout << "\tx" << i + 1 << "\t\t" << B.at(i) << endl;
     }
@@ -150,7 +151,7 @@ void recupererFichier(vector<vector<float>> &A, vector<float> &B, int &dim)
     fstream fichier;
     string ligne = "";
     int nombreLigne = 0;
-    fichier.open("testcpp.txt", ios::in); // ouvrir le fichier "data.txt"
+    fichier.open("data.txt", ios::in); // ouvrir le fichier "data.txt"
     if (!fichier)
     {
         cout << "Erreur lors de lecture de fichier" << endl; // si le fichier n'existe pas ou ne se trouve pas dans le dossier actuel

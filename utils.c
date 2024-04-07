@@ -190,12 +190,17 @@ double select_current_pivot(linear_system_t *linear_system, int current_line, in
 
     double pivot = 0;
     double p = linear_system->storage[current_line][current_line]; // pivot in diagonal
-
+    double abs_val;
+    double col_val;
     for (y = current_line + 1; y < nb_matrix_rows; y++)            // check for max value in same column
     {
-        pivot = MAX(p, linear_system->storage[y][current_line]);
-        if(p != pivot) *pivot_line = y; //if the current pivot is updated, we update the line the pivot is on
-        p = pivot;
+        col_val = linear_system->storage[y][current_line];
+        abs_val = fabs(col_val); //check if the absolute value of the pivot coefficient to be selected
+        pivot = MAX(fabs(p), abs_val);
+        //printf("cmp: %lf %lf = %lf\n", p, col_val, pivot);
+        if(fabs(p) != pivot) *pivot_line = y; //if the current pivot is updated, we update the line the pivot is on
+        p = (pivot == abs_val) ? col_val : p;
+        //printf("->%lf\n", p);
     }
 
     return p;
@@ -231,15 +236,15 @@ void linear_system_propagation(linear_system_t *linear_system)
     double pivot;
     int pivot_line;
 
+    //loop iterativly over each row of the linear system matrix
     for (curr_line = 0; curr_line < nb_matrix_rows; curr_line++)
     {
-        printf("Starting at line %d\n", curr_line);
         pivot_line = curr_line;
         
         // selection du pivot pour chaque ligne de la matrice augmentée du systeme lineaire
         pivot = select_current_pivot(linear_system, curr_line, &pivot_line);
         
-        printf("\n[Ligne %d]Valeur de pivot trouvée: %.3lf à la ligne %d\n",
+        printf("\n[Ligne #%d] Valeur de pivot trouvée: %.3lf à la ligne %d\n",
                curr_line,
                pivot,
                pivot_line);
@@ -248,14 +253,19 @@ void linear_system_propagation(linear_system_t *linear_system)
         if (pivot_line != curr_line)
         {
             swap_linear_system_rows(linear_system, curr_line, pivot_line);
+#if _DEBUG_
+            printf("Permutation de la ligne %d avec la ligne %d:\n", curr_line, pivot_line);
             print_linear_system_matrix(linear_system);
+#endif
         }
 
         // pivotage de la matrice
         // A[i][j] = A[i][j] - ( (A[i][pi] / A[pi][pi]) * A[pi][j] )
         apply_pivot(linear_system, curr_line);
+#if _DEBUG_
         printf("\naprès pivot:\n");
         print_linear_system_matrix(linear_system);
+#endif
     }
 }
 
@@ -272,7 +282,7 @@ void print_linear_system_matrix(linear_system_t *linear_system)
     {
         for (j = 0; j < nb_matrix_cols; j++)
         {
-            printf("%.3lf ", linear_system->storage[i][j]);
+            printf("%-10.3lf ", linear_system->storage[i][j]);
         }
         printf("\n");
     }
@@ -289,17 +299,18 @@ void apply_pivot(linear_system_t *linear_system, int pivot_line)
 
     int lcol = linear_system->nb_unknowns; // the last column in the linear system matrix
 
+    double pivot = linear_system->storage[pivot_line][pivot_line];
     for (i = pivot_line + 1; i < nb_matrix_rows; i++)
     {
         for (j = pivot_line + 1; j < nb_matrix_rows; j++)
         {
             //A[i][j] = A[i][j] - ( (A[i][pi] / A[pi][pi]) * A[pi][j] )
-            linear_system->storage[i][j]=linear_system->storage[i][j]-((linear_system->storage[i][pivot_line]/linear_system->storage[pivot_line][pivot_line])*linear_system->storage[pivot_line][j]);
+            linear_system->storage[i][j]=linear_system->storage[i][j]-((linear_system->storage[i][pivot_line]/pivot)*linear_system->storage[pivot_line][j]);
         }
         //A[i][dim-1]=A[i][dim-1]-((A[i][pi]/A[pi][pi])*A[pi][dim-1])
         linear_system->storage[i][lcol] = 
         linear_system->storage[i][lcol] - (
-            (linear_system->storage[i][pivot_line] / linear_system->storage[pivot_line][pivot_line]
+            (linear_system->storage[i][pivot_line] / pivot
             ) * linear_system->storage[pivot_line][lcol]
         );
         linear_system->storage[i][pivot_line]=0;
@@ -319,7 +330,7 @@ double * solve_linear_system(linear_system_t * linear_system) {
     //allocate memory for the solutions array, initialized with zeros
     double * solutions = (double*)calloc(linear_system->nb_unknowns, sizeof(double));
     if(solutions == NULL) {
-        fprintf(stderr, "Out of memory\n");
+        fprintf(stderr, "Out of memory!\n");
         exit(EXIT_FAILURE);
     }
     
@@ -337,4 +348,12 @@ double * solve_linear_system(linear_system_t * linear_system) {
         solutions[i] = (linear_system->storage[i][nb_matrix_cols-1]-result)/linear_system->storage[i][i];
     }
     return solutions;
+}
+
+// Get the current time in seconds since the Epoch
+double wtime(void)
+{
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  return tv.tv_sec + tv.tv_usec * 1e-6;
 }
