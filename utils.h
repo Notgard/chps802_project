@@ -80,4 +80,7 @@ double * solve_linear_system(linear_system_t * linear_system);
 // Get the current time in seconds since the Epoch
 double wtime(void);
 
+//TODO : faire une fonction pour générer des systèmes linéaires résolvables 
+//      - insertion directement dans un fichier en entrée
+
 #endif

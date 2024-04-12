@@ -70,6 +70,12 @@ void read_linear_system_from_file(char *input_filename, linear_system_t *linear_
     linear_system->storage = pointer_storage_array;
 
     linear_system->nb_unknowns = linear_system_unknowns;
+
+    if ((status = fclose(file)) == EOF)
+    {
+        fprintf(stderr, "Can't close file %s\n", input_filename);
+        exit(EXIT_FAILURE);
+    }
 }
 
 /// @brief Writes the result of the solved linear system into a file
@@ -192,13 +198,15 @@ double select_current_pivot(linear_system_t *linear_system, int current_line, in
     double p = linear_system->storage[current_line][current_line]; // pivot in diagonal
     double abs_val;
     double col_val;
+    double p_abs;
     for (y = current_line + 1; y < nb_matrix_rows; y++)            // check for max value in same column
     {
         col_val = linear_system->storage[y][current_line];
         abs_val = fabs(col_val); //check if the absolute value of the pivot coefficient to be selected
-        pivot = MAX(fabs(p), abs_val);
+        p_abs = fabs(p);
+        pivot = MAX(p_abs, abs_val);
         //printf("cmp: %lf %lf = %lf\n", p, col_val, pivot);
-        if(fabs(p) != pivot) *pivot_line = y; //if the current pivot is updated, we update the line the pivot is on
+        if(p_abs != pivot) *pivot_line = y; //if the current pivot is updated, we update the line the pivot is on
         p = (pivot == abs_val) ? col_val : p;
         //printf("->%lf\n", p);
     }

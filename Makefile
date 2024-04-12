@@ -25,7 +25,7 @@ OBJECTS_O = $(OBJECTS) $(EXEC_O)
 
 CC = gcc
 OPTIMIZER_FLAGS = -O3
-CCFLAGS_STD = -Wall -Wextra -pedantic -Wshadow $(OPTIMIZER_FLAGS)
+CCFLAGS_STD = -Wall -Wextra -Wshadow $(OPTIMIZER_FLAGS)
 CCFLAGS_DEBUG = -D _DEBUG_
 CCFLAGS = $(CCFLAGS_STD)
 CCLIBS = -lm
