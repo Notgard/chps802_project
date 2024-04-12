@@ -54,5 +54,7 @@ int main(int argc, char *argv[])
 
     free(solutions);
 
+    //generate_random_linear_system("generated_out.txt", 32, false);
+
     return EXIT_SUCCESS;
 }

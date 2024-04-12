@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <limits.h>
 #include <sys/time.h>
+#include <stdbool.h>
+#include <time.h>
 
 #include <math.h>
 
@@ -22,6 +24,8 @@
     _a < _b ? _a : _b;       \
 })
 
+#define MIN_RAND_VAL -1E6
+#define MAX_RAND_VAL 1E6
 
 /// @brief linear system wrapper structure which contains the system matrix as a 1D array (data) 
 ///        and a pointer array (storage) to facilitate access to elements inside the linear system matrix
@@ -80,7 +84,10 @@ double * solve_linear_system(linear_system_t * linear_system);
 // Get the current time in seconds since the Epoch
 double wtime(void);
 
+double rand_double(unsigned int* seed, int min, int max);
+
 //TODO : faire une fonction pour générer des systèmes linéaires résolvables 
 //      - insertion directement dans un fichier en entrée
+void generate_random_linear_system(char * output_filename, int size, bool solvable);
 
 #endif

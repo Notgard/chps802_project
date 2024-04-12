@@ -199,16 +199,17 @@ double select_current_pivot(linear_system_t *linear_system, int current_line, in
     double abs_val;
     double col_val;
     double p_abs;
-    for (y = current_line + 1; y < nb_matrix_rows; y++)            // check for max value in same column
+    for (y = current_line + 1; y < nb_matrix_rows; y++) // check for max value in same column
     {
         col_val = linear_system->storage[y][current_line];
-        abs_val = fabs(col_val); //check if the absolute value of the pivot coefficient to be selected
+        abs_val = fabs(col_val); // check if the absolute value of the pivot coefficient to be selected
         p_abs = fabs(p);
         pivot = MAX(p_abs, abs_val);
-        //printf("cmp: %lf %lf = %lf\n", p, col_val, pivot);
-        if(p_abs != pivot) *pivot_line = y; //if the current pivot is updated, we update the line the pivot is on
+        // printf("cmp: %lf %lf = %lf\n", p, col_val, pivot);
+        if (p_abs != pivot)
+            *pivot_line = y; // if the current pivot is updated, we update the line the pivot is on
         p = (pivot == abs_val) ? col_val : p;
-        //printf("->%lf\n", p);
+        // printf("->%lf\n", p);
     }
 
     return p;
@@ -244,14 +245,14 @@ void linear_system_propagation(linear_system_t *linear_system)
     double pivot;
     int pivot_line;
 
-    //loop iterativly over each row of the linear system matrix
+    // loop iterativly over each row of the linear system matrix
     for (curr_line = 0; curr_line < nb_matrix_rows; curr_line++)
     {
         pivot_line = curr_line;
-        
+
         // selection du pivot pour chaque ligne de la matrice augmentée du systeme lineaire
         pivot = select_current_pivot(linear_system, curr_line, &pivot_line);
-        
+
         printf("\n[Ligne #%d] Valeur de pivot trouvée: %.3lf à la ligne %d\n",
                curr_line,
                pivot,
@@ -312,48 +313,48 @@ void apply_pivot(linear_system_t *linear_system, int pivot_line)
     {
         for (j = pivot_line + 1; j < nb_matrix_rows; j++)
         {
-            //A[i][j] = A[i][j] - ( (A[i][pi] / A[pi][pi]) * A[pi][j] )
-            linear_system->storage[i][j]=linear_system->storage[i][j]-((linear_system->storage[i][pivot_line]/pivot)*linear_system->storage[pivot_line][j]);
+            // A[i][j] = A[i][j] - ( (A[i][pi] / A[pi][pi]) * A[pi][j] )
+            linear_system->storage[i][j] = linear_system->storage[i][j] - ((linear_system->storage[i][pivot_line] / pivot) * linear_system->storage[pivot_line][j]);
         }
-        //A[i][dim-1]=A[i][dim-1]-((A[i][pi]/A[pi][pi])*A[pi][dim-1])
-        linear_system->storage[i][lcol] = 
-        linear_system->storage[i][lcol] - (
-            (linear_system->storage[i][pivot_line] / pivot
-            ) * linear_system->storage[pivot_line][lcol]
-        );
-        linear_system->storage[i][pivot_line]=0;
+        // A[i][dim-1]=A[i][dim-1]-((A[i][pi]/A[pi][pi])*A[pi][dim-1])
+        linear_system->storage[i][lcol] =
+            linear_system->storage[i][lcol] - ((linear_system->storage[i][pivot_line] / pivot) * linear_system->storage[pivot_line][lcol]);
+        linear_system->storage[i][pivot_line] = 0;
     }
 }
 
 /// @brief Solves the linear system
 /// @param linear_system the given linear system
 /// @return the solutions to the linear system inside an array
-double * solve_linear_system(linear_system_t * linear_system) {
+double *solve_linear_system(linear_system_t *linear_system)
+{
     int j = 0;
     double result = 0;
 
     int nb_matrix_rows = linear_system->nb_unknowns;
     int nb_matrix_cols = nb_matrix_rows + 1;
 
-    //allocate memory for the solutions array, initialized with zeros
-    double * solutions = (double*)calloc(linear_system->nb_unknowns, sizeof(double));
-    if(solutions == NULL) {
+    // allocate memory for the solutions array, initialized with zeros
+    double *solutions = (double *)calloc(linear_system->nb_unknowns, sizeof(double));
+    if (solutions == NULL)
+    {
         fprintf(stderr, "Out of memory!\n");
         exit(EXIT_FAILURE);
     }
-    
+
     for (int i = nb_matrix_rows - 1; i >= 0; i--)
     { // commencer à la dernière ligne
-        result=0;
-        for (j = i; j < nb_matrix_cols-1; j++)
+        result = 0;
+        for (j = i; j < nb_matrix_cols - 1; j++)
         {
-            if (i != j) { //if the the two aren't the samen then an initial solution has been found
-                //result += A[i][j] * R[j]
+            if (i != j)
+            { // if the the two aren't the samen then an initial solution has been found
+                // result += A[i][j] * R[j]
                 result += linear_system->storage[i][j] * solutions[j];
             }
         }
-        //R[i]=(A[i][dim-1]-result)/A[i][i]
-        solutions[i] = (linear_system->storage[i][nb_matrix_cols-1]-result)/linear_system->storage[i][i];
+        // R[i]=(A[i][dim-1]-result)/A[i][i]
+        solutions[i] = (linear_system->storage[i][nb_matrix_cols - 1] - result) / linear_system->storage[i][i];
     }
     return solutions;
 }
@@ -361,7 +362,59 @@ double * solve_linear_system(linear_system_t * linear_system) {
 // Get the current time in seconds since the Epoch
 double wtime(void)
 {
-  struct timeval tv;
-  gettimeofday(&tv, NULL);
-  return tv.tv_sec + tv.tv_usec * 1e-6;
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return tv.tv_sec + tv.tv_usec * 1e-6;
+}
+
+double rand_double(unsigned int *seed, int min, int max)
+{
+    return min + (double)rand_r(seed) / ((double)RAND_MAX / (max - min));
+}
+
+void generate_random_linear_system(char *output_filename, int size, bool solvable)
+{
+    int i, j;
+    int status;
+    double rand_val;
+    unsigned int seed = (unsigned int)time(NULL);
+    FILE *file;
+
+    // open the file in write mode, creates the file if doesn't exist
+    if (!(file = fopen(output_filename, "w+")))
+    {
+        fprintf(stderr, "Error opening file %s\n", output_filename);
+        exit(EXIT_FAILURE);
+    }
+
+    if ((status = fprintf(file, "%d\n", size-1)) == EOF)
+    {
+        perror("Can't write content to output file");
+        exit(EXIT_FAILURE);
+    }
+
+    for (i = 0; i < size; i++)
+    {
+        for (j = 0; j < size; j++)
+        {
+            rand_val = rand_double(&seed, MIN_RAND_VAL, MAX_RAND_VAL);
+            char *val = (j == size-1) ? "%.3lf" : "%.3lf ";
+            if ((status = fprintf(file, val, rand_val)) == EOF)
+            {
+                perror("Can't write content to output file");
+                exit(EXIT_FAILURE);
+            }
+        }
+        if ((status = fprintf(file, "\n")) == EOF)
+        {
+            perror("Can't write content to output file");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    if ((status = fclose(file)) == EOF)
+    {
+        fprintf(stderr, "Can't close file %s\n", output_filename);
+        exit(EXIT_FAILURE);
+    }
 }
