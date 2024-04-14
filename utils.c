@@ -1,4 +1,5 @@
 #include "utils.h"
+#include "omp_utils.h"
 
 /// @brief Stores the linear system read from the given file into a linear system structure
 /// @param input_filename the given file's path
@@ -163,33 +164,6 @@ void clean_linear_system_memory(linear_system_t *linear_system)
 /// @return the pivot
 double select_current_pivot(linear_system_t *linear_system, int current_line, int *pivot_line)
 {
-    /*
-        int x, y;
-        double max = INT_MIN;
-        double abs_max;
-
-        int nb_matrix_cols = nb_matrix_rows + 1;
-
-        // loop over the linear system matrix
-        for (y = 0; y < nb_matrix_rows; y++)
-        {
-            for (x = 0; x < nb_matrix_cols; x++)
-            {
-                if (y == x)
-                { // check diagonal of the matrix
-                    // use the absolute value of the current max value for compare unless == INT_MIN
-                    abs_max = (max == INT_MIN) ? max : fabs(max);
-                    if (fabs(linear_system->storage[y][x]) > abs_max)
-                    { // retrieve the maximum coefficient and position from the diagonal
-                        r = y, c = x;
-                        max = linear_system->storage[y][x];
-                    }
-                }
-            }
-        }
-
-        *row = r;
-        *col = c; */
     int y;
 
     int nb_matrix_rows = linear_system->nb_unknowns;
@@ -205,11 +179,9 @@ double select_current_pivot(linear_system_t *linear_system, int current_line, in
         abs_val = fabs(col_val); // check if the absolute value of the pivot coefficient to be selected
         p_abs = fabs(p);
         pivot = MAX(p_abs, abs_val);
-        // printf("cmp: %lf %lf = %lf\n", p, col_val, pivot);
         if (p_abs != pivot)
             *pivot_line = y; // if the current pivot is updated, we update the line the pivot is on
-        p = (pivot == abs_val) ? col_val : p;
-        // printf("->%lf\n", p);
+        p = (pivot == abs_val) ? col_val : p; //determine whether to get the absolute value or not
     }
 
     return p;
@@ -269,8 +241,8 @@ void linear_system_propagation(linear_system_t *linear_system)
         }
 
         // pivotage de la matrice
-        // A[i][j] = A[i][j] - ( (A[i][pi] / A[pi][pi]) * A[pi][j] )
-        apply_pivot(linear_system, curr_line);
+        omp_apply_pivot(linear_system, curr_line);
+        //apply_pivot(linear_system, curr_line);
 #if _DEBUG_
         printf("\naprès pivot:\n");
         print_linear_system_matrix(linear_system);

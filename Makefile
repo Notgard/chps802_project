@@ -3,7 +3,7 @@
 #
 
 EXEC = main
-OBJECTS = utils.o
+OBJECTS = utils.o omp_utils.o
 PROJECT_NAME = gaussian_project
 
 #
@@ -27,8 +27,8 @@ CC = gcc
 OPTIMIZER_FLAGS = -O3
 CCFLAGS_STD = -Wall -Wextra -Wshadow $(OPTIMIZER_FLAGS)
 CCFLAGS_DEBUG = -D _DEBUG_
-CCFLAGS = $(CCFLAGS_STD)
-CCLIBS = -lm
+CCFLAGS = -fopenmp $(CCFLAGS_STD)
+CCLIBS = -lm -fopenmp
 
 #
 # RULES (must not change it)
