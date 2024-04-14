@@ -63,6 +63,7 @@ double omp_select_current_pivot(linear_system_t *linear_system, int current_line
         double abs_val;
         double col_val;
         double p_abs;
+        #pragma omp for
         for (int y = start; y < stop; y++)
         {
             col_val = linear_system->storage[y][current_line];
@@ -84,7 +85,7 @@ double omp_select_current_pivot(linear_system_t *linear_system, int current_line
             }
         }
 
-        #pragma omp barrier
+        //#pragma omp barrier
     }
     *pivot_line = global_pivot_line;
     return global_max_pivot;

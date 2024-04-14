@@ -50,12 +50,12 @@ int main(int argc, char *argv[])
     solutions = solve_linear_system(&linear_system);
 
     end = wtime();
-    
+#if _DEBUG_
     for (s = 0; s < linear_system.nb_unknowns; s++)
     {
         printf("x%d = %.3lf\n", s + 1, solutions[s]);
     }
-
+#endif
     // Output
     printf("-----------------------------------------------------\n");
     printf(" Total solver runtime: %lf seconds\n", end - start);
