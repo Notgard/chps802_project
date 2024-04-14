@@ -236,13 +236,18 @@ void linear_system_propagation(linear_system_t *linear_system)
         pivot_line = curr_line;
 
         // selection du pivot pour chaque ligne de la matrice augmentée du systeme lineaire
+#if _OMP_
+        pivot = omp_select_current_pivot(linear_system, curr_line, &pivot_line);
+#else
         pivot = select_current_pivot(linear_system, curr_line, &pivot_line);
+#endif
 
+#if _DEBUG_
         printf("\n[Ligne #%d] Valeur de pivot trouvée: %.3lf à la ligne %d\n",
                curr_line,
                pivot,
                pivot_line);
-
+#endif
         // changement de ligne pour que le pivot soit sur la diagonale
         if (pivot_line != curr_line)
         {
@@ -254,8 +259,12 @@ void linear_system_propagation(linear_system_t *linear_system)
         }
 
         // pivotage de la matrice
+#if _OMP_
         omp_apply_pivot(linear_system, curr_line);
-        // apply_pivot(linear_system, curr_line);
+#else
+        apply_pivot(linear_system, curr_line);
+#endif
+
 #if _DEBUG_
         printf("\naprès pivot:\n");
         print_linear_system_matrix(linear_system);
