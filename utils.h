@@ -24,7 +24,8 @@ void clean_linear_system_memory(linear_system_t * linear_system);
 /// @brief Writes the result of the solved linear system into a file 
 /// @param output_filename the ouput file's path
 /// @param linear_system the linear system to write into the given output_file
-void write_linear_system_to_file(char * output_filename, linear_system_t * linear_system);
+/// @param solutions the solutions for the given linear system
+void write_linear_system_to_file(char * output_filename, linear_system_t * linear_system, double * solutions);
 
 /// @brief Finds the pivot used in the currently provided linear system using a partial pivot strategy
 /// @param linear_system the linear system

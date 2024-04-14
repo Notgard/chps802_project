@@ -42,7 +42,9 @@ int main(int argc, char *argv[])
 
     linear_system_propagation(&linear_system);
 
-    double *solutions = solve_linear_system(&linear_system);
+    double *solutions = NULL;
+
+    solutions = solve_linear_system(&linear_system);
 
     end = wtime();
     
@@ -56,7 +58,7 @@ int main(int argc, char *argv[])
     printf(" Total solver runtime: %lf seconds\n", end - start);
     printf("-----------------------------------------------------\n");
 
-    write_linear_system_to_file(OUT_FILE, &linear_system);
+    write_linear_system_to_file(OUT_FILE, &linear_system, solutions);
 
     clean_linear_system_memory(&linear_system);
 

@@ -82,7 +82,8 @@ void read_linear_system_from_file(char *input_filename, linear_system_t *linear_
 /// @brief Writes the result of the solved linear system into a file
 /// @param output_filename the ouput file's path
 /// @param linear_system the linear system to write into the given output_file
-void write_linear_system_to_file(char *output_filename, linear_system_t *linear_system)
+/// @param solutions the solutions for the given linear system
+void write_linear_system_to_file(char *output_filename, linear_system_t *linear_system, double *solutions)
 {
     FILE *file;
 
@@ -111,23 +112,22 @@ void write_linear_system_to_file(char *output_filename, linear_system_t *linear_
     {
         for (j = 0; j < nb_matrix_cols; j++)
         {
-            if (linear_system->storage[i][j] < 1 && linear_system->storage[i][j] > -1)
-            {                    // truncate the floating point value leading zero
-                char buffer[20]; // Assuming a maximum length of the printed number
-                double truncate_value = linear_system->storage[i][j];
-
-                sprintf(buffer, "%.3lf", truncate_value);
-
-                if ((status = fprintf(file, "%s ", buffer + 1)) == EOF)
+            if (linear_system->storage[i][j] != 0.0f)
+            {
+                // write the contents of the linear system matrix into the output file
+                if ((status = fprintf(file, "%.3lf ", linear_system->storage[i][j])) == EOF)
                 {
                     perror("Can't write linear system to output file");
                     exit(EXIT_FAILURE);
                 }
             }
-            else
-            {
-                // write the contents of the linear system matrix into the output file
-                if ((status = fprintf(file, "%.3lf ", linear_system->storage[i][j])) == EOF)
+            else if (linear_system->storage[i][j] != 0.0f && (linear_system->storage[i][j] < 1 && linear_system->storage[i][j] > -1))
+            {                    // truncate the floating point value leading zero
+                char buffer[20]; // Assuming a maximum length of the printed number
+                double truncate_value = linear_system->storage[i][j];
+                sprintf(buffer, "%.3lf", truncate_value);
+
+                if ((status = fprintf(file, "%s ", buffer + 1)) == EOF)
                 {
                     perror("Can't write linear system to output file");
                     exit(EXIT_FAILURE);
@@ -139,6 +139,19 @@ void write_linear_system_to_file(char *output_filename, linear_system_t *linear_
         {
             perror("Can't write linebreak to output file");
             exit(EXIT_FAILURE);
+        }
+    }
+
+    if (solutions != NULL)
+    {
+        for (i = 0; i < nb_matrix_rows; i++)
+        {
+            //write solutions to the linear system to the file (if they exist)
+            if ((status = fprintf(file, "%.3lf ", solutions[i])) == EOF)
+            {
+                perror("Can't write linear system to output file");
+                exit(EXIT_FAILURE);
+            }
         }
     }
 
@@ -180,8 +193,8 @@ double select_current_pivot(linear_system_t *linear_system, int current_line, in
         p_abs = fabs(p);
         pivot = MAX(p_abs, abs_val);
         if (p_abs != pivot)
-            *pivot_line = y; // if the current pivot is updated, we update the line the pivot is on
-        p = (pivot == abs_val) ? col_val : p; //determine whether to get the absolute value or not
+            *pivot_line = y;                  // if the current pivot is updated, we update the line the pivot is on
+        p = (pivot == abs_val) ? col_val : p; // determine whether to get the absolute value or not
     }
 
     return p;
@@ -242,7 +255,7 @@ void linear_system_propagation(linear_system_t *linear_system)
 
         // pivotage de la matrice
         omp_apply_pivot(linear_system, curr_line);
-        //apply_pivot(linear_system, curr_line);
+        // apply_pivot(linear_system, curr_line);
 #if _DEBUG_
         printf("\naprès pivot:\n");
         print_linear_system_matrix(linear_system);
@@ -279,9 +292,9 @@ void apply_pivot(linear_system_t *linear_system, int pivot_line)
     int nb_matrix_rows = linear_system->nb_unknowns;
 
     double pivot = linear_system->storage[pivot_line][pivot_line];
-    for (i = pivot_line + 1; i < nb_matrix_rows; i++) //propagation du pivot sur les lignes en dessous
+    for (i = pivot_line + 1; i < nb_matrix_rows; i++) // propagation du pivot sur les lignes en dessous
     {
-        for (j = pivot_line + 1; j <= nb_matrix_rows; j++) //propagation du pivot sur les coefficient de chaque lignes
+        for (j = pivot_line + 1; j <= nb_matrix_rows; j++) // propagation du pivot sur les coefficient de chaque lignes
         {
             // A[i][j] = A[i][j] - ( (A[i][pi] / A[pi][pi]) * A[pi][j] )
             linear_system->storage[i][j] = linear_system->storage[i][j] - ((linear_system->storage[i][pivot_line] / pivot) * linear_system->storage[pivot_line][j]);
@@ -354,24 +367,24 @@ void generate_random_linear_system(char *output_filename, int size, bool solvabl
         exit(EXIT_FAILURE);
     }
 
-    if ((status = fprintf(file, "%d\n", size-1)) == EOF)
+    if ((status = fprintf(file, "%d\n", size - 1)) == EOF)
     {
         perror("Can't write content to output file");
         exit(EXIT_FAILURE);
     }
 
-    if(solvable)
+    if (solvable)
     {
         /*
-        Whenever a linear system is considered to be solvable, 
-        i.e has at least one solution it means according to the Rouché–Capelli theorem 
-        that the linear system coefficient matrix and it's augmented matrix representation 
+        Whenever a linear system is considered to be solvable,
+        i.e has at least one solution it means according to the Rouché–Capelli theorem
+        that the linear system coefficient matrix and it's augmented matrix representation
         have the same rank. In that case would the linear system be solvable.
-        Thus, we first have to store both of these matricies in memory and perform a 
-        matrix rank calculation in order to determine if they are the same 
+        Thus, we first have to store both of these matricies in memory and perform a
+        matrix rank calculation in order to determine if they are the same
         (probably inside another seperate matrix rank function)
         */
-        //TODO: -store both square matrix A and rectangular matrix A|b
+        // TODO: -store both square matrix A and rectangular matrix A|b
         //-check the rank of both matrices
         //-call the function recursively again if the rank again
     }
@@ -381,7 +394,7 @@ void generate_random_linear_system(char *output_filename, int size, bool solvabl
         for (j = 0; j < size; j++)
         {
             rand_val = rand_double(&seed, MIN_RAND_VAL, MAX_RAND_VAL);
-            char *val = (j == size-1) ? "%.3lf" : "%.3lf ";
+            char *val = (j == size - 1) ? "%.3lf" : "%.3lf ";
             if ((status = fprintf(file, val, rand_val)) == EOF)
             {
                 perror("Can't write content to output file");
