@@ -9,6 +9,7 @@
 #include <time.h>
 
 #include <math.h>
+#include <omp.h>
 
 #define MAX(a,b)             \
 ({                           \

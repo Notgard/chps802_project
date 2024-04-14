@@ -306,19 +306,14 @@ void apply_pivot(linear_system_t *linear_system, int pivot_line)
 
     int nb_matrix_rows = linear_system->nb_unknowns;
 
-    int lcol = linear_system->nb_unknowns; // the last column in the linear system matrix
-
     double pivot = linear_system->storage[pivot_line][pivot_line];
-    for (i = pivot_line + 1; i < nb_matrix_rows; i++)
+    for (i = pivot_line + 1; i < nb_matrix_rows; i++) //propagation du pivot sur les lignes en dessous
     {
-        for (j = pivot_line + 1; j < nb_matrix_rows; j++)
+        for (j = pivot_line + 1; j <= nb_matrix_rows; j++) //propagation du pivot sur les coefficient de chaque lignes
         {
             // A[i][j] = A[i][j] - ( (A[i][pi] / A[pi][pi]) * A[pi][j] )
             linear_system->storage[i][j] = linear_system->storage[i][j] - ((linear_system->storage[i][pivot_line] / pivot) * linear_system->storage[pivot_line][j]);
         }
-        // A[i][dim-1]=A[i][dim-1]-((A[i][pi]/A[pi][pi])*A[pi][dim-1])
-        linear_system->storage[i][lcol] =
-            linear_system->storage[i][lcol] - ((linear_system->storage[i][pivot_line] / pivot) * linear_system->storage[pivot_line][lcol]);
         linear_system->storage[i][pivot_line] = 0;
     }
 }
@@ -391,6 +386,22 @@ void generate_random_linear_system(char *output_filename, int size, bool solvabl
     {
         perror("Can't write content to output file");
         exit(EXIT_FAILURE);
+    }
+
+    if(solvable)
+    {
+        /*
+        Whenever a linear system is considered to be solvable, 
+        i.e has at least one solution it means according to the Rouché–Capelli theorem 
+        that the linear system coefficient matrix and it's augmented matrix representation 
+        have the same rank. In that case would the linear system be solvable.
+        Thus, we first have to store both of these matricies in memory and perform a 
+        matrix rank calculation in order to determine if they are the same 
+        (probably inside another seperate matrix rank function)
+        */
+        //TODO: -store both square matrix A and rectangular matrix A|b
+        //-check the rank of both matrices
+        //-call the function recursively again if the rank again
     }
 
     for (i = 0; i < size; i++)
