@@ -29,7 +29,8 @@ Pour une analyse plus fine du temps d'exécution en moyenne de la version séque
 ```console
 foo@bar:~$ sudo apt-get update -y
 foo@bar:~$ sudo apt-get install -y gnuplot
-```).
+```
+).
 
 ## Configuration ##
 
