@@ -55,6 +55,6 @@ for ((i = 1; i < n_tries; i++)); do
 done
 avg_overall_exec=$(echo "$sum_overall_exec / $n_tries" | bc -l)
 printf "Average parallel execution time: %.3f sec. (for %s)\n" "$avg_overall_exec" "$input"
-ehco -e "Finished benchmarking."
+echo -e "Finished benchmarking."
 #create benchmark graph
 ./stats $stats_file "Sequentielle" $stats_file_p "OpenMP"

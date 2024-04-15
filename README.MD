@@ -9,10 +9,22 @@ Algorithme de résolution de système linéaire écrit en C qui utilise une mét
 
 Utilisation du programme **gem_matrix** afin de générer des matrices de tailles souhaitées (compilation inclus dans le Makefile).
 
+Une utilisation générique du programme est la suivante :
+```console
+foo@bar:~$ make clean && make
+
+Use: ./gen_matrix nb_unknownks
+Where :
+  nb_unknownks   : Le nombre d'inconnues dans la matrice du système linéaire généré
+
+foo@bar:~$ ./gen_matrix 1024
+```
+
 ## Utilisation ##
 
-Le Makefile possède différentes options de compilation de 'make', notamment celles pour les différentes versions parallèles :
-* 'omp' : Permet de compiler le programme 'sudoku_omp', dans lequel l'algorithme de résolution est lancé sur tous les threads renseignés jusqu'à ce qu'une solution soit trouvée par l'un d'entre eux.
+Le Makefile possède différentes options de compilation de 'make', notamment celle pour la version parallèle :
+* 'omp' : Permet de compiler le programme 'main', dans lequel l'algorithme de résolution du système linéaire est lancé en utilisant tous les threads renseignés.
+* 'debug' : Permet de compiler le programme 'main' avec un affichage plus détaillées (non recommandé pour des matrices à plus de 10 inconnus).
 
 Une utilisation générique du programme est la suivante :
 ```console
@@ -20,7 +32,7 @@ foo@bar:~$ make clean && make
 
 Use: ./main matrix_fileame
 Where :
-  matrix_fileame   : The file containing the linear system to solve
+  matrix_fileame   : Le fichier contenant le système linéaire à résoudre
 
 foo@bar:~$ ./main generated_out.txt
 ```
