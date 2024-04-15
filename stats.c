@@ -26,12 +26,12 @@ void plot_stats(char *filename)
 
     int color = 0;
 
-    fprintf(gnuplot, "set title \"%s\" font \"%s\"\n", "Evolution de la fonction de cout du recuit simmulé", "Helvetica,18");
+    fprintf(gnuplot, "set title \"%s\" font \"%s\"\n", "Evolution de la fonction", "Helvetica,18");
     fprintf(gnuplot, "set xlabel \"Redémarrage de l'algorithme\"\n");
-    fprintf(gnuplot, "set ylabel \"Valeur de la fonction de cout\"\n");
+    fprintf(gnuplot, "set ylabel \"Valeur de la fonction\"\n");
     fprintf(gnuplot, "set xtics 0, %d\n", X_RANGE);
 
-    fprintf(gnuplot, "plot \"%s\" t 'Cost Function' with %s linewidth %d linecolor \"%s\"\n",
+    fprintf(gnuplot, "plot \"%s\" t 'Function' with %s linewidth %d linecolor \"%s\"\n",
             filename, LINE_TYPE, LINE_THICKNESS, plot_colors[color]);
 
     fflush(gnuplot);
@@ -98,7 +98,7 @@ int main(int argc, char *argv[])
     //char * file5 = "./data/0000183b305c-05-10-2023-(17-22-53).txt"; //without keep best strategy
 
     //char * title = "Evolution de la fonction de cout du recuit simmulé";
-    char * title = "Evolution du temps d'execution par nombre de processus (avec 4 threads)";
+    char * title = "Evolution du temps d'execution par nombre de processus (OpenMP) en moyenne (sur 10)";
 
     plot_statistics(title, argc, argv);
     //sudoku_plot_multiple_stats("%s", file4, file5, NULL);

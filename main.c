@@ -17,7 +17,6 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    int s;
     double start, end;
     char *filename = argv[1];
     
@@ -51,7 +50,7 @@ int main(int argc, char *argv[])
 
     end = wtime();
 #if _DEBUG_
-    for (s = 0; s < linear_system.nb_unknowns; s++)
+    for (int s = 0; s < linear_system.nb_unknowns; s++)
     {
         printf("x%d = %.3lf\n", s + 1, solutions[s]);
     }
@@ -67,7 +66,7 @@ int main(int argc, char *argv[])
 
     free(solutions);
 
-    generate_random_linear_system("generated_out.txt", 1024, false);
+    //generate_random_linear_system("generated_out.txt", 2048, false);
 
     return EXIT_SUCCESS;
 }

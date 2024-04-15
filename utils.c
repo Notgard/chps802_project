@@ -227,7 +227,6 @@ void linear_system_propagation(linear_system_t *linear_system)
 
     int nb_matrix_rows = linear_system->nb_unknowns;
 
-    double pivot;
     int pivot_line;
 
     // loop iterativly over each row of the linear system matrix
@@ -237,9 +236,11 @@ void linear_system_propagation(linear_system_t *linear_system)
 
         // selection du pivot pour chaque ligne de la matrice augmentée du systeme lineaire
 #if _OMP_
-        pivot = omp_select_current_pivot(linear_system, curr_line, &pivot_line);
+        double pivot = omp_select_current_pivot(linear_system, curr_line, &pivot_line);
+#elif _DEBUG_
+        double pivot = select_current_pivot(linear_system, curr_line, &pivot_line);
 #else
-        pivot = select_current_pivot(linear_system, curr_line, &pivot_line);
+        select_current_pivot(linear_system, curr_line, &pivot_line);
 #endif
 
 #if _DEBUG_
@@ -376,7 +377,7 @@ void generate_random_linear_system(char *output_filename, int size, bool solvabl
         exit(EXIT_FAILURE);
     }
 
-    if ((status = fprintf(file, "%d\n", size - 1)) == EOF)
+    if ((status = fprintf(file, "%d\n", size)) == EOF)
     {
         perror("Can't write content to output file");
         exit(EXIT_FAILURE);
@@ -398,9 +399,9 @@ void generate_random_linear_system(char *output_filename, int size, bool solvabl
         //-call the function recursively again if the rank again
     }
 
-    for (i = 0; i < size; i++)
+    for (i = 0; i <= size; i++)
     {
-        for (j = 0; j < size; j++)
+        for (j = 0; j <= size; j++)
         {
             rand_val = rand_double(&seed, MIN_RAND_VAL, MAX_RAND_VAL);
             char *val = (j == size - 1) ? "%.3lf" : "%.3lf ";

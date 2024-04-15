@@ -2,7 +2,7 @@
 # MAIN CONFIGURATION (to configure)
 #
 
-EXEC = main stats
+EXEC = main stats test
 OBJECTS = utils.o omp_utils.o
 PROJECT_NAME = gaussian_project
 
@@ -25,7 +25,7 @@ OBJECTS_O = $(OBJECTS) $(EXEC_O)
 
 CC = gcc
 OPTIMIZER_FLAGS = -O3
-CCFLAGS_STD = -fopenmp -Wall -Wextra -Wshadow $(OPTIMIZER_FLAGS)
+CCFLAGS_STD = -fopenmp -Wall -Wextra -Wshadow #$(OPTIMIZER_FLAGS)
 CCFLAGS_DEBUG = -D _DEBUG_
 CCFLAGS_OMP = -D _OMP_
 CCFLAGS = $(CCFLAGS_STD)

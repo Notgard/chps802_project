@@ -13,11 +13,11 @@ void omp_apply_pivot(linear_system_t *linear_system, int pivot_line)
 
     #pragma omp parallel private(i)
     {
-// propagation du pivot sur les lignes en dessous
+        // propagation du pivot sur les lignes en dessous
         #pragma omp for schedule(dynamic, nb_matrix_rows)
         for (i = pivot_line + 1; i < nb_matrix_rows; i++)
         {
-// propagation du pivot sur les coefficient de chaque lignes
+            // propagation du pivot sur les coefficient de chaque lignes
             #pragma omp simd
             for (j = pivot_line + 1; j <= nb_matrix_rows; j++)
             {
@@ -41,41 +41,39 @@ double omp_select_current_pivot(linear_system_t *linear_system, int current_line
 {
     int nb_matrix_rows = linear_system->nb_unknowns;
 
-    double global_max_pivot = linear_system->storage[current_line][current_line];
     int global_pivot_line = *pivot_line;
-    //int step = 2;
-    //double *max_arr = (double *)malloc(sizeof(double) * 0);
+    double global_max_pivot = linear_system->storage[current_line][current_line];
     #pragma omp parallel shared(global_max_pivot, global_pivot_line)
     {
-        int thread_id = omp_get_thread_num();
         int start, stop;
+        int thread_id = omp_get_thread_num();
         double local_max_pivot = global_max_pivot;
         int local_pivot_line = global_pivot_line;
+
         int num_threads = omp_get_num_threads();
-        int step = (nb_matrix_rows)/num_threads;
+        int step = (nb_matrix_rows + num_threads - 1)/num_threads;
 
         start = (thread_id * step) + (current_line + 1);
-        stop = (start + step > nb_matrix_rows) ? nb_matrix_rows : start + step;
+        stop = start + step;
+        if(stop > nb_matrix_rows) stop = nb_matrix_rows;
 
-        //printf(">>>>>>>>>>>>>>>thread %d: start=%d, stop=%d\n", thread_id, start, stop);
+        //printf(">>>>>>>>>>>>>>>thread %d: start=%d, stop=%d %d\n", thread_id, start, stop, nb_matrix_rows);
 
-        double pivot = 0;
         double abs_val;
         double col_val;
         double p_abs;
-        #pragma omp for
+        //#pragma omp for schedule(static, step) this creates further problems if the step can't be divided evenly
         for (int y = start; y < stop; y++)
         {
             col_val = linear_system->storage[y][current_line];
             abs_val = fabs(col_val); // check if the absolute value of the pivot coefficient to be selected
             p_abs = fabs(local_max_pivot);
-            pivot = MAX(p_abs, abs_val);
-            if (p_abs != pivot)
-                local_pivot_line = y;                  // if the current pivot is updated, we update the line the pivot is on
-            local_max_pivot = (pivot == abs_val) ? col_val : local_max_pivot; // determine whether to get the absolute value or not
+            if(abs_val > p_abs) {
+                local_pivot_line = y;
+                local_max_pivot = col_val;
+            }
         }
 
-        
         #pragma omp critical
         {
             double abs_max_pivot = fabs(local_max_pivot);
@@ -84,8 +82,6 @@ double omp_select_current_pivot(linear_system_t *linear_system, int current_line
                 global_pivot_line = local_pivot_line;
             }
         }
-
-        //#pragma omp barrier
     }
     *pivot_line = global_pivot_line;
     return global_max_pivot;
