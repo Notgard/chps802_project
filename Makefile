@@ -2,7 +2,7 @@
 # MAIN CONFIGURATION (to configure)
 #
 
-EXEC = main stats test
+EXEC = main stats gen_matrix
 OBJECTS = utils.o omp_utils.o
 PROJECT_NAME = gaussian_project
 
