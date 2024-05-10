@@ -43,6 +43,7 @@ int main(int argc, char *argv[])
     start = wtime();
 
     linear_system_propagation(&linear_system);
+    //linear_system_matrix_propagation(&linear_system);
 
     double *solutions = NULL;
 

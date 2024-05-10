@@ -67,4 +67,12 @@ double rand_double(unsigned int* seed, int min, int max);
 //      - insertion directement dans un fichier en entrée
 void generate_random_linear_system(char * output_filename, int size, bool solvable);
 
+//prototype function for construct matrix pivot
+void apply_matrix_pivot(linear_system_t *linear_system, int pivot_line, int pivot_col);
+
+//cosntructs the elementary matrix used to pivot the linear system
+void construct_matrix_pivot(linear_system_t *linear_system, double * e_matrix, int pivot_line, int pivot_col);
+
+void linear_system_matrix_propagation(linear_system_t *linear_system);
+
 #endif
