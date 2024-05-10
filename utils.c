@@ -315,7 +315,9 @@ void linear_system_propagation(linear_system_t *linear_system)
 #endif
     }
 }
-
+/* 
+THIS IS IMPOSSIBLE DUE TO THE NATURE OF THE ALGORITHM ITSELF WHICH IS ITERATIVE,
+THE MATRIX CHANGES EVERY ITERATION AND THE ELEMENTARY MATRIX IS NOT CONSTANT (for parallel pivot later ?)
 void linear_system_matrix_propagation(linear_system_t *linear_system)
 {
     int curr_line;
@@ -374,6 +376,7 @@ void linear_system_matrix_propagation(linear_system_t *linear_system)
     //multiply the elementary matrix with the vector B
     matrix_vector_multiplication(e_matrix, linear_system->vec_B, n, n, n);
 }
+ */
 
 /// @brief Prints the contents of the linear system matrix
 /// @param linear_system the given linear system
@@ -414,7 +417,7 @@ void apply_pivot(linear_system_t *linear_system, int pivot_line)
         linear_system->storage[i][pivot_line] = 0;
     }
 }
-
+/* 
 void construct_matrix_pivot(linear_system_t *linear_system, double * e_matrix, int pivot_line, int pivot_col) {
     int i;
 
@@ -428,7 +431,7 @@ void construct_matrix_pivot(linear_system_t *linear_system, double * e_matrix, i
         e_matrix[i * n + pivot_col] = -multiplier;
     }
 }
-
+ */
 void apply_matrix_pivot(linear_system_t *linear_system, int pivot_line, int pivot_col)
 {
     int i;
