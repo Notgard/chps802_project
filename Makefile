@@ -2,7 +2,8 @@
 # MAIN CONFIGURATION (to configure)
 #
 
-EXEC = main #stats gen_matrix #test2
+EXEC = main gen_matrix #stats
+PROFILE_EXEC=main
 OBJECTS = utils.o omp_utils.o matmul.o
 PROJECT_NAME = gaussian_project
 PROFILE_FILE=generated_matrix.txt
@@ -79,7 +80,7 @@ clean:
 # Profiling rule
 profile: all
 	@echo "Running executables for profiling..."
-	@for i in $(EXEC); do \
+	@for i in $(PROFILE_EXEC); do \
 		echo "Profiling $$i..."; \
 		./$$i $(PROFILE_FILE); \
 		if [ -f gmon.out ]; then \

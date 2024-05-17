@@ -146,7 +146,7 @@ void write_linear_system_to_file(char *output_filename, linear_system_t *linear_
     }
 
     // loop over the 1D linear system matrix using the storage pointers
-    for (i = 0; i < nb_matrix_rows; i++)
+/*     for (i = 0; i < nb_matrix_rows; i++)
     {
         for (j = 0; j < nb_matrix_cols; j++)
         {
@@ -178,7 +178,7 @@ void write_linear_system_to_file(char *output_filename, linear_system_t *linear_
             perror("Can't write linebreak to output file");
             exit(EXIT_FAILURE);
         }
-    }
+    } */
 
     if (solutions != NULL)
     {
@@ -410,12 +410,15 @@ void apply_pivot(linear_system_t *linear_system, int pivot_line)
     for (i = pivot_line + 1; i < nb_matrix_rows; i++) // propagation du pivot sur les lignes en dessous
     {
         double multiplier = (linear_system->storage[i][pivot_line] / pivot);
+        //double multiplier = linear_system->data[i * nb_matrix_rows + pivot_line] / pivot;
         for (j = pivot_line + 1; j <= nb_matrix_rows; j++) // propagation du pivot sur les coefficient de chaque lignes
         {
             // A[i][j] = A[i][j] - ( (A[i][pi] / A[pi][pi]) * A[pi][j] )
-            linear_system->storage[i][j] = linear_system->storage[i][j] - (multiplier * linear_system->storage[pivot_line][j]);
+            linear_system->storage[i][j] -= multiplier * linear_system->storage[pivot_line][j];
+            //linear_system->data[i * nb_matrix_rows + j] = linear_system->data[i * nb_matrix_rows + j] - (multiplier * linear_system->data[pivot_line * nb_matrix_rows + j]);
         }
-        linear_system->storage[i][pivot_line] = 0;
+        linear_system->storage[i][pivot_line] = 0.0;
+        //linear_system->data[i * nb_matrix_rows + pivot_line] = 0;
     }
 }
 /*
