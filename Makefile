@@ -2,9 +2,10 @@
 # MAIN CONFIGURATION (to configure)
 #
 
-EXEC = main stats gen_matrix #test2
+EXEC = main #stats gen_matrix #test2
 OBJECTS = utils.o omp_utils.o matmul.o
 PROJECT_NAME = gaussian_project
+PROFILE_FILE=generated_matrix.txt
 
 #
 # SUFFIXES (must not change it)
@@ -24,12 +25,12 @@ OBJECTS_O = $(OBJECTS) $(EXEC_O)
 #
 
 CC = gcc
-OPTIMIZER_FLAGS = -O3
-CCFLAGS_STD = -fopenmp -Wall -Wextra -Wshadow #$(OPTIMIZER_FLAGS)
+OPTIMIZER_FLAGS = -O2 -pg -g 
+CCFLAGS_STD = -fopenmp -pg -g -Wall -Wextra -Wshadow #$(OPTIMIZER_FLAGS)
 CCFLAGS_DEBUG = -D _DEBUG_
 CCFLAGS_OMP = -D _OMP_
-CCFLAGS = $(CCFLAGS_STD)
-CCLIBS = -lm -fopenmp
+CCFLAGS = $(CCFLAGS_STD) -pg -g 
+CCLIBS = -lm -fopenmp -pg -g 
 
 #
 # RULES (must not change it)
@@ -69,7 +70,24 @@ clean:
 	@rm -f *~ *#
 	@rm -f $(EXEC)
 	@rm -f dependancies
+	@rm -f *gmon.out
 	@echo "Done."
 
 # DEPENDANCIES
 # This section is completed automatically
+
+# Profiling rule
+profile: all
+	@echo "Running executables for profiling..."
+	@for i in $(EXEC); do \
+		echo "Profiling $$i..."; \
+		./$$i $(PROFILE_FILE); \
+		if [ -f gmon.out ]; then \
+			gprof $$i gmon.out > $$i.prof; \
+			mv gmon.out $$i.gmon.out; \
+		else \
+			echo "gmon.out not found for $$i."; \
+		fi \
+	done
+	@echo "Profiling done."
+

@@ -77,7 +77,7 @@ void read_linear_system_from_file(char *input_filename, linear_system_t *linear_
     // store the pointers into the pointer storage array
     for (i = 0; i < nb_matrix_rows; i++)
     {
-        matrix_a[i] = (double **)malloc(sizeof(double*) * nb_matrix_rows);
+        matrix_a[i] = (double **)malloc(sizeof(double *) * nb_matrix_rows);
     }
 
     // read the values of the linear system from the file and write them to the matrix
@@ -93,7 +93,7 @@ void read_linear_system_from_file(char *input_filename, linear_system_t *linear_
         linear_system_matrix[i] = file_value_pointer;
     }
 
-    //copy content of linear system matrix to matrix_a
+    // copy content of linear system matrix to matrix_a
     for (i = 0; i < nb_matrix_rows; i++)
     {
         for (int j = 0; j < nb_matrix_rows; j++)
@@ -305,8 +305,8 @@ void linear_system_propagation(linear_system_t *linear_system)
 #if _OMP_
         omp_apply_pivot(linear_system, curr_line);
 #else
-        apply_matrix_pivot(linear_system, curr_line, pivot_col);
-        // apply_pivot(linear_system, curr_line);
+        //apply_matrix_pivot(linear_system, curr_line, pivot_col);
+        apply_pivot(linear_system, curr_line);
 #endif
 
 #if _DEBUG_
@@ -315,7 +315,7 @@ void linear_system_propagation(linear_system_t *linear_system)
 #endif
     }
 }
-/* 
+/*
 THIS IS IMPOSSIBLE DUE TO THE NATURE OF THE ALGORITHM ITSELF WHICH IS ITERATIVE,
 THE MATRIX CHANGES EVERY ITERATION AND THE ELEMENTARY MATRIX IS NOT CONSTANT (for parallel pivot later ?)
 void linear_system_matrix_propagation(linear_system_t *linear_system)
@@ -409,15 +409,16 @@ void apply_pivot(linear_system_t *linear_system, int pivot_line)
     double pivot = linear_system->storage[pivot_line][pivot_line];
     for (i = pivot_line + 1; i < nb_matrix_rows; i++) // propagation du pivot sur les lignes en dessous
     {
+        double multiplier = (linear_system->storage[i][pivot_line] / pivot);
         for (j = pivot_line + 1; j <= nb_matrix_rows; j++) // propagation du pivot sur les coefficient de chaque lignes
         {
             // A[i][j] = A[i][j] - ( (A[i][pi] / A[pi][pi]) * A[pi][j] )
-            linear_system->storage[i][j] = linear_system->storage[i][j] - ((linear_system->storage[i][pivot_line] / pivot) * linear_system->storage[pivot_line][j]);
+            linear_system->storage[i][j] = linear_system->storage[i][j] - (multiplier * linear_system->storage[pivot_line][j]);
         }
         linear_system->storage[i][pivot_line] = 0;
     }
 }
-/* 
+/*
 void construct_matrix_pivot(linear_system_t *linear_system, double * e_matrix, int pivot_line, int pivot_col) {
     int i;
 
