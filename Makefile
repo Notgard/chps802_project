@@ -2,7 +2,7 @@
 # MAIN CONFIGURATION (to configure)
 #
 
-EXEC = main gen_matrix #stats
+EXEC = main gen_matrix stats
 PROFILE_EXEC=main
 OBJECTS = utils.o omp_utils.o matmul.o
 PROJECT_NAME = gaussian_project

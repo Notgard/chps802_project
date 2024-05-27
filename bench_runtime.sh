@@ -12,7 +12,7 @@ n_tries=$1
 #make compile main solving C program
 make clean && make
 #set variables
-stats_file="./benchmark/stats-seq-$$.txt"
+stats_file="./benchmark/new_seq-$$.txt"
 echo -e "Starting benchmark for file $input..."
 avg_overall_exec=0.0
 sum_overall_exec=0.0

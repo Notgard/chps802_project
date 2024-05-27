@@ -4,7 +4,7 @@ GCC = gcc
 CFLAGS =
 
 # Source files
-CU_SRCS = main_cuda.cu
+CU_SRCS = old_main_cuda.cu
 C_SRCS = cuda_utils.c
 
 # Object files
@@ -12,7 +12,7 @@ CU_OBJS = $(CU_SRCS:.cu=.o)
 C_OBJS = $(C_SRCS:.c=.o)
 
 # Executable
-TARGET = main_cuda
+TARGET = old_main_cuda
 
 # Default rule
 all: $(TARGET)

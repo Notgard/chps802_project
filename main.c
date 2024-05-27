@@ -56,6 +56,7 @@ int main(int argc, char *argv[])
         printf("x%d = %.3lf\n", s + 1, solutions[s]);
     }
 #endif
+
     // Output
     printf("-----------------------------------------------------\n");
     printf(" Total solver runtime: %lf seconds\n", end - start);
