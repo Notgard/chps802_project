@@ -125,11 +125,10 @@ void write_linear_system_to_file(char *output_filename, linear_system_t *linear_
 {
     FILE *file;
 
-    int i, j;
+    int i;
     int status;
 
     int nb_matrix_rows = linear_system->nb_unknowns;
-    int nb_matrix_cols = nb_matrix_rows + 1;
 
     // open the file in write mode, creates the file if doesn't exist
     if (!(file = fopen(output_filename, "w+")))
@@ -146,9 +145,11 @@ void write_linear_system_to_file(char *output_filename, linear_system_t *linear_
     }
 
     // loop over the 1D linear system matrix using the storage pointers
-/*     for (i = 0; i < nb_matrix_rows; i++)
-    {
-        for (j = 0; j < nb_matrix_cols; j++)
+/*  
+    int nb_matrix_cols = nb_matrix_rows + 1;   
+    for (i = 0; i < nb_matrix_rows; i++)
+        {
+        for (int j = 0; j < nb_matrix_cols; j++)
         {
             if (linear_system->storage[i][j] != 0.0f)
             {
@@ -268,13 +269,13 @@ void linear_system_propagation(linear_system_t *linear_system)
     int nb_matrix_rows = linear_system->nb_unknowns;
 
     int pivot_line;
-    int pivot_col;
+    //int pivot_col;
 
     // loop iterativly over each row of the linear system matrix
     for (curr_line = 0; curr_line < nb_matrix_rows; curr_line++)
     {
         pivot_line = curr_line;
-        pivot_col = curr_line;
+        //pivot_col = curr_line;
 
         // selection du pivot pour chaque ligne de la matrice augmentée du systeme lineaire
 #if _OMP_
