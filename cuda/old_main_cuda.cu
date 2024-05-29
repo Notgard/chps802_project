@@ -7,7 +7,7 @@
 
 #include "config.h"
 
-#define THREADS_PER_BLOCK 16
+#define THREADS_PER_BLOCK 32
 
 /// @brief Stores the linear system read from the given file into a linear system structure
 /// @param input_filename the given file's path
@@ -128,7 +128,7 @@ void cuda_read_linear_system_from_file(char *input_filename, linear_system_t *li
 /// @param output_filename the ouput file's path
 /// @param linear_system the linear system to write into the given output_file
 /// @param solutions the solutions for the given linear system
-void cuda_write_linear_system_to_file(const char *output_filename, linear_system_t *linear_system, double *solutions)
+void cuda_write_linear_system_to_file(char *output_filename, linear_system_t *linear_system, double *solutions)
 {
     FILE *file;
 
@@ -154,40 +154,40 @@ void cuda_write_linear_system_to_file(const char *output_filename, linear_system
 
     // loop over the 1D linear system matrix using the storage pointers
 
-    /*     int nb_matrix_cols = nb_matrix_rows + 1;
-        for (i = 0; i < nb_matrix_rows; i++)
+/*     int nb_matrix_cols = nb_matrix_rows + 1;
+    for (i = 0; i < nb_matrix_rows; i++)
+    {
+        for (int j = 0; j < nb_matrix_cols; j++)
         {
-            for (int j = 0; j < nb_matrix_cols; j++)
+            if (linear_system->storage[i][j] != 0.0f)
             {
-                if (linear_system->storage[i][j] != 0.0f)
+                // write the contents of the linear system matrix into the output file
+                if ((status = fprintf(file, "%.3lf ", linear_system->storage[i][j])) == EOF)
                 {
-                    // write the contents of the linear system matrix into the output file
-                    if ((status = fprintf(file, "%.3lf ", linear_system->storage[i][j])) == EOF)
-                    {
-                        perror("Can't write linear system to output file");
-                        exit(EXIT_FAILURE);
-                    }
+                    perror("Can't write linear system to output file");
+                    exit(EXIT_FAILURE);
                 }
-                else if (linear_system->storage[i][j] != 0.0f && (linear_system->storage[i][j] < 1 && linear_system->storage[i][j] > -1))
-                {                    // truncate the floating point value leading zero
-                    char buffer[20]; // Assuming a maximum length of the printed number
-                    double truncate_value = linear_system->storage[i][j];
-                    sprintf(buffer, "%.3lf", truncate_value);
+            }
+            else if (linear_system->storage[i][j] != 0.0f && (linear_system->storage[i][j] < 1 && linear_system->storage[i][j] > -1))
+            {                    // truncate the floating point value leading zero
+                char buffer[20]; // Assuming a maximum length of the printed number
+                double truncate_value = linear_system->storage[i][j];
+                sprintf(buffer, "%.3lf", truncate_value);
 
-                    if ((status = fprintf(file, "%s ", buffer + 1)) == EOF)
-                    {
-                        perror("Can't write linear system to output file");
-                        exit(EXIT_FAILURE);
-                    }
+                if ((status = fprintf(file, "%s ", buffer + 1)) == EOF)
+                {
+                    perror("Can't write linear system to output file");
+                    exit(EXIT_FAILURE);
                 }
             }
-            // add linebreak to file for each written row from the linear system matrix
-            if ((status = fprintf(file, "%s", "\n")) == EOF)
-            {
-                perror("Can't write linebreak to output file");
-                exit(EXIT_FAILURE);
-            }
-        } */
+        }
+        // add linebreak to file for each written row from the linear system matrix
+        if ((status = fprintf(file, "%s", "\n")) == EOF)
+        {
+            perror("Can't write linebreak to output file");
+            exit(EXIT_FAILURE);
+        }
+    } */
 
     if (solutions != NULL)
     {
@@ -294,7 +294,6 @@ __global__ void find_pivot_and_swap(double *d_linear_system, int n_rows, int n_c
     double *local_max = shared_data;
     int *local_pivot = (int *)&local_max[blockDim.x];
 
-    // Step 1: Identify the pivot row
     double pivot = 0;
     double p = d_linear_system[current_line * n_cols + col];
     double abs_val;
@@ -335,24 +334,46 @@ __global__ void find_pivot_and_swap(double *d_linear_system, int n_rows, int n_c
 
     __syncthreads();
 
-    if (tid == 0)
-    {
+    if(tid == 0) {
         *d_pivot_line = local_pivot[0];
     }
-    /*     if (tid == 0)
-        {
-            if (current_line != local_pivot[0])
-            {
-                // Swap rows current_line and pivot_row
-                for (int j = 0; j < n_cols; j++)
-                {
-                    double temp = d_linear_system[current_line * n_cols + j];
-                    d_linear_system[current_line * n_cols + j] = d_linear_system[local_pivot[0] * n_cols + j];
-                    d_linear_system[local_pivot[0] * n_cols + j] = temp;
+}
+
+// gauss elimination function taking the linear system matrix and loading the pivot line into shared memory
+__global__ void find_pivot(double *d_linear_system, int n_rows, int n_cols, int current_line, int *d_pivot_line)
+{
+    extern __shared__ double shared_data[];
+    extern __shared__ int shared_idx[];
+
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if(idx < n_rows) {
+        //copying the data from global device memory to block shred memory
+        int dcol_idx = idx * n_cols + current_line;
+        shared_data[idx] = d_linear_system[dcol_idx];
+        shared_idx[idx] = dcol_idx;
+        __syncthreads();
+
+        for(int stride=blockDim.x/2; stride > 0; stride /= 2) {
+            if (idx < stride) {
+                double value = shared_data[idx];
+                int value_index = shared_idx[idx];
+                double next_value = shared_data[idx + stride];
+                int next_value_index = shared_idx[idx + stride];
+                if(fabs(value) < fabs(next_value)) {
+                    shared_data[idx] = next_value;
+                    shared_idx[idx] = next_value_index;
                 }
             }
         }
-        __syncthreads(); */
+    }
+
+    __syncthreads();
+
+    if(tid == 0) {
+        *d_pivot_line = shared_idx[0];
+        printf("Pivot line: %d\n", *d_pivot_line);
+        printf("Pivot value: %f\n", shared_data[0]);
+    }
 }
 
 // paralell selection of the max absolute value gaussian pivot
@@ -368,31 +389,32 @@ __global__ void gauss_elimination(double *d_linear_system, int n_rows, int n_col
 
     if (col < n_cols)
     {
-
         // Load the pivot row into shared memory
         if (row == pivot_line)
         {
             pivot_row[col] = d_linear_system[pivot_line * n_cols + col];
         }
-        __syncthreads();
+    }
+    __syncthreads();
+
+    if (row > pivot_line && row < n_rows && col < n_cols)
+    {
+        //double factor = d_linear_system[row * n_cols + pivot_line] / pivot_row[pivot_line];
+        double factor = d_linear_system[row * n_cols + pivot_line] / d_linear_system[pivot_line * n_cols + pivot_line];
 
         // Perform Gaussian elimination for elements in rows below the pivot line
-        if (row > pivot_line && row < n_rows)
+        if (col >= pivot_line)
         {
-            //double pivot_value = pivot_row[pivot_line];
-            double pivot_value = d_linear_system[pivot_line * n_cols + col];
-
-            double factor = d_linear_system[row * n_cols + pivot_line] / pivot_value;
-
-            if (col >= pivot_line)
-            {
-                //d_linear_system[row * n_cols + col] -= factor * pivot_row[col];
-                d_linear_system[row * n_cols + col] -= factor * d_linear_system[pivot_line * n_cols + col];;
-            }
+            //d_linear_system[row * n_cols + col] -= factor * pivot_row[col];
+            d_linear_system[row * n_cols + col] -= factor * d_linear_system[pivot_line * n_cols + col];
         }
-        __syncthreads();
     }
 }
+
+
+template <int BLOCK_SIZE> __global__ void full_gaussian_elimination(double * d_linear_system, int n_rows, int n_cols, int pivot_line) {
+
+} 
 
 double GBPerSec(int bytes, double sec)
 {
@@ -434,13 +456,13 @@ void printCudaInfo()
 void pivot_de_gauss(linear_system_t *h_linear_system)
 {
     double *d_linear_system = NULL;
-    int *d_pivot_line = NULL;
+    int* d_pivot_line = NULL;
 
     cudaError_t code;
     clock_t start, end;
     double elapsed;
     int n = h_linear_system->nb_unknowns;
-    // int h_system_size = n * (n + 1);
+    int h_system_size = n * (n + 1);
     size_t h_size = (n * (n + 1)) * sizeof(double);
 
     int h_pivot_line;
@@ -458,12 +480,8 @@ void pivot_de_gauss(linear_system_t *h_linear_system)
 
     const int nb_blocks = (h_size + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
 
-    dim3 blockSized(32, 32);
-    dim3 gridSize((n + blockSized.x - 1) / blockSized.x, ((n + 1) + blockSized.y - 1) / blockSized.y);
-
-    int blockSize = 32;
-    int numBlocks = (n + blockSize - 1) / blockSize;
-    
+    dim3 blockSize(THREADS_PER_BLOCK, THREADS_PER_BLOCK);
+    dim3 gridSize((n + blockSize.x - 1) / blockSize.x, ((n + 1) + blockSize.y - 1) / blockSize.y);
     int sharedMemSize = (n + 1) * sizeof(double);
 
     start = clock();
@@ -481,43 +499,41 @@ void pivot_de_gauss(linear_system_t *h_linear_system)
         cudaDeviceSynchronize();
 
         cudaMemcpy(&h_pivot_line, d_pivot_line, sizeof(int), cudaMemcpyDeviceToHost);
+        printf("Pivot line %d: %d\n", curr_line, h_pivot_line);
 
         cudaMemcpy(h_linear_system->data, d_linear_system, h_size, cudaMemcpyDeviceToHost);
-        //printf("Pivot line %d: %d > %f\n", curr_line, h_pivot_line, h_linear_system->storage[h_pivot_line][h_pivot_line]);
-        if (pivot_line != h_pivot_line)
-        {
+        if(pivot_line != h_pivot_line) {
             cuda_swap_linear_system_rows(h_linear_system, pivot_line, h_pivot_line);
         }
 
-        /*         printf("After pivot line %d:\n", curr_line);
-                // print the h_linear_system->data
-                for (int i = 0; i < n; i++)
-                {
-                    for (int j = 0; j < n + 1; j++)
-                    {
-                        printf("%-10.3lf ", h_linear_system->data[i * (n + 1) + j]);
-                    }
-                    printf("\n");
-                }
-                printf("---------------------------------------\n"); */
+        printf("After pivot line %d:\n", curr_line);
+        // print the h_linear_system->data
+        for (int i = 0; i < n; i++)
+        {
+            for (int j = 0; j < n + 1; j++)
+            {
+                printf("%-10.3lf ", h_linear_system->data[i * (n + 1) + j]);
+            }
+            printf("\n");
+        }
+        printf("---------------------------------------\n");
 
         cudaMemcpy(d_linear_system, h_linear_system->data, h_size, cudaMemcpyHostToDevice);
-
-        gauss_elimination<1024><<<gridSize, blockSized, sharedMemSize>>>(d_linear_system, n, n + 1, pivot_line);
-        //gauss_elimination<1024><<<numBlocks, blockSize, sharedMemSize>>>(d_linear_system, n, n + 1, pivot_line);
+        
+        gauss_elimination<1024><<<gridSize, blockSize, sharedMemSize>>>(d_linear_system, n, n + 1, pivot_line);
         cudaDeviceSynchronize();
-        /*         cudaMemcpy(h_linear_system->data, d_linear_system, h_size, cudaMemcpyDeviceToHost);
-                // print the h_linear_system->data
-                printf("After gauss elimination\n");
-                for (int i = 0; i < n; i++)
-                {
-                    for (int j = 0; j < n + 1; j++)
-                    {
-                        printf("%-10.3lf ", h_linear_system->data[i * (n + 1) + j]);
-                    }
-                    printf("\n");
-                }
-                printf("---------------------------------------\n"); */
+        cudaMemcpy(h_linear_system->data, d_linear_system, h_size, cudaMemcpyDeviceToHost);
+        // print the h_linear_system->data
+        printf("After gauss elimination\n");
+        for (int i = 0; i < n; i++)
+        {
+            for (int j = 0; j < n + 1; j++)
+            {
+                printf("%-10.3lf ", h_linear_system->data[i * (n + 1) + j]);
+            }
+            printf("\n");
+        }
+        printf("---------------------------------------\n");
         code = cudaGetLastError();
         if (code != cudaSuccess)
         {
@@ -528,18 +544,17 @@ void pivot_de_gauss(linear_system_t *h_linear_system)
     end = clock();
     elapsed = (double)(end - start) / CLOCKS_PER_SEC;
     printf("Gaussian elimination time in CUDA: %.5lf\n", elapsed);
-    printf("Total solver runtime: %f seconds", elapsed);
 
     cudaMemcpy(h_linear_system->data, d_linear_system, h_size, cudaMemcpyDeviceToHost);
-    /*     printf("Final linear system: \n");
-        for (int i = 0; i < n; i++)
+    printf("Final linear system: \n");
+    for (int i = 0; i < n; i++)
+    {
+        for (int j = 0; j < n + 1; j++)
         {
-            for (int j = 0; j < n + 1; j++)
-            {
-                printf("%f ", h_linear_system->data[i * (n + 1) + j]);
-            }
-            printf("\n");
-        } */
+            printf("%f ", h_linear_system->data[i * (n + 1) + j]);
+        }
+        printf("\n");
+    }
 }
 
 #define OUT_FILE "output.txt"
@@ -570,13 +585,11 @@ int main(int argc, char *argv[])
 
     printf("\n------------------------------------------\n");
 
-    // cuda_print_linear_system_matrix(&linear_system);
+    cuda_print_linear_system_matrix(&linear_system);
 
     double *solutions = cuda_solve_linear_system(&linear_system);
 
-    const char *output_filename = OUT_FILE;
-
-    cuda_write_linear_system_to_file(output_filename, &linear_system, solutions);
+    cuda_write_linear_system_to_file(OUT_FILE, &linear_system, solutions);
 
     cuda_clean_linear_system_memory(&linear_system);
 
