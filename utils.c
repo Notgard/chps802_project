@@ -314,6 +314,7 @@ void linear_system_propagation(linear_system_t *linear_system)
         printf("\naprès pivot:\n");
         print_linear_system_matrix(linear_system);
 #endif
+        break;
     }
 }
 /*

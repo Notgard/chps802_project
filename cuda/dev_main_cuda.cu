@@ -7,7 +7,7 @@
 
 #include "config.h"
 
-#define THREADS_PER_BLOCK 16
+#define THREADS_PER_BLOCK 32
 
 /// @brief Stores the linear system read from the given file into a linear system structure
 /// @param input_filename the given file's path
@@ -340,7 +340,7 @@ __global__ void find_pivot_and_swap(double *d_linear_system, int n_rows, int n_c
     }
 }
 
-__global__ void find_pivot(double *d_linear_system, int n_rows, int n_cols, int current_line, int *d_pivot_line)
+__global__ void find_pivot_beta(double *d_linear_system, int n_rows, int n_cols, int current_line, int *d_pivot_line)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     extern __shared__ double shared_data[];
@@ -364,8 +364,8 @@ __global__ void find_pivot(double *d_linear_system, int n_rows, int n_cols, int 
         {
             if (tid < stride && (tid + stride) < n_rows - current_line)
             {
-                float lhs = shared_max[tid];
-                float rhs = shared_max[tid + stride];
+                double lhs = shared_max[tid];
+                double rhs = shared_max[tid + stride];
                 printf("[%d, %d] lhs: %.3f, rhs: %.3f\n", tid, stride, lhs, rhs);
                 if(fabs(lhs) < fabs(rhs)) {
                     shared_max[tid] = rhs;
@@ -387,6 +387,48 @@ __global__ void find_pivot(double *d_linear_system, int n_rows, int n_cols, int 
     }
 }
 
+__global__ void find_pivot(double *d_linear_system, int n_rows, int n_cols, int current_line, int *d_pivot_line)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    extern __shared__ double shared_data[];
+    double *shared_max = shared_data;
+    int *shared_idx = (int *)&shared_max[blockDim.x];
+
+    int tid = threadIdx.x;
+    if (idx < n_rows) {
+        if (idx < n_rows - current_line - 1)
+        {
+            int row = idx + current_line + 1;
+            shared_max[tid] = d_linear_system[row * n_cols + current_line];
+            shared_idx[tid] = row;
+            printf("[%d, %d] %.3f, ", row, current_line, shared_max[tid]);
+        }
+
+        __syncthreads();
+
+        for(int stride=blockDim.x/2; stride > 0; stride /= 2) {
+            if (tid < stride && (tid + stride) < n_rows - current_line) {
+                double lhs = shared_max[threadIdx.x];
+                double rhs = shared_max[threadIdx.x + stride];
+                if (fabs(lhs) < fabs(rhs))
+                {
+                    printf("shared_max[%d] = %.3f\n", tid, rhs);
+                    shared_max[tid] = rhs;
+                    shared_idx[tid] = shared_idx[tid + stride]; // update the index
+                }
+                else
+                {
+                    shared_max[tid] = lhs;
+                }
+            }
+            __syncthreads();
+        }
+    }
+    if (idx == 0) {
+        printf("Max value: %f\n", shared_max[0]);
+        *d_pivot_line = shared_idx[0];
+    }
+}
 
 // paralell selection of the max absolute value gaussian pivot
 template <int BLOCK_SIZE>
@@ -721,6 +763,7 @@ void pivot_de_gauss(linear_system_t *h_linear_system)
             fprintf(stderr, "GPUassert: %s\n", cudaGetErrorString(code));
             exit(EXIT_FAILURE);
         }
+        break;
     }
     end = clock();
     elapsed = (double)(end - start) / CLOCKS_PER_SEC;
