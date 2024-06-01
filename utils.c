@@ -283,9 +283,9 @@ void linear_system_propagation(linear_system_t *linear_system)
 #elif _DEBUG_
         double pivot = select_current_pivot(linear_system, curr_line, &pivot_line);
 #else
-        select_current_pivot(linear_system, curr_line, &pivot_line);
+        double pivot = select_current_pivot(linear_system, curr_line, &pivot_line);
+        printf("Pivot line %d: %d %.3lf\n", curr_line, pivot_line, pivot);
 #endif
-        printf("Pivot line %d: %d %f\n", curr_line, pivot_line, linear_system->storage[pivot_line][pivot_line]);
 #if _DEBUG_
         printf("\n[Ligne #%d] Valeur de pivot trouvée: %.3lf à la ligne %d\n",
                curr_line,
@@ -314,7 +314,6 @@ void linear_system_propagation(linear_system_t *linear_system)
         printf("\naprès pivot:\n");
         print_linear_system_matrix(linear_system);
 #endif
-        break;
     }
 }
 /*
