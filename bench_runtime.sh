@@ -1,5 +1,4 @@
 #!/usr/bin/bash
-#check for n_sudokus argument
 if [[ $# -lt 1 || $# -gt 1 ]] ; then
 	echo 'Wrong arguments provided, need n_tries'
 	exit 1

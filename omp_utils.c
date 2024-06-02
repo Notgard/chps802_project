@@ -6,6 +6,7 @@
 void omp_apply_pivot(linear_system_t *linear_system, int pivot_line)
 {
     int i, j;
+    int size_page=4096/sizeof(double);
 
     int nb_matrix_rows = linear_system->nb_unknowns;
 
@@ -14,7 +15,7 @@ void omp_apply_pivot(linear_system_t *linear_system, int pivot_line)
     #pragma omp parallel private(i)
     {
         // propagation du pivot sur les lignes en dessous
-        #pragma omp for schedule(dynamic, nb_matrix_rows)
+        #pragma omp for schedule(static, size_page)
         for (i = pivot_line + 1; i < nb_matrix_rows; i++)
         {
             // propagation du pivot sur les coefficient de chaque lignes
@@ -74,12 +75,15 @@ double omp_select_current_pivot(linear_system_t *linear_system, int current_line
             }
         }
 
-        #pragma omp critical
-        {
-            double abs_max_pivot = fabs(local_max_pivot);
-            if(abs_max_pivot > fabs(global_max_pivot)) {
-                global_max_pivot = local_max_pivot;
-                global_pivot_line = local_pivot_line;
+        double abs_max_pivot = fabs(local_max_pivot);
+        if(abs_max_pivot > fabs(global_max_pivot)){
+            #pragma omp critical
+            {
+                abs_max_pivot = fabs(local_max_pivot);
+                if(abs_max_pivot > fabs(global_max_pivot)) {
+                    global_max_pivot = local_max_pivot;
+                    global_pivot_line = local_pivot_line;
+                }
             }
         }
     }

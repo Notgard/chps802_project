@@ -4,7 +4,7 @@ if [[ $# -lt 1 || $# -gt 1 ]] ; then
 	echo 'Wrong arguments provided, need n_tries'
 	exit 1
 fi
-exec_file="old_main_cuda"
+exec_file="dev_main_cuda"
 input="generated_matrix.txt"
 n=0
 n_avg=2
@@ -12,7 +12,7 @@ n_tries=$1
 #make compile main solving C program
 make clean && make
 #set variables
-stats_file="./benchmark/stats-seq-$$.txt"
+stats_file="./benchmark/bench_cuda_dev.txt"
 echo -e "Starting benchmark for file $input..."
 avg_overall_exec=0.0
 sum_overall_exec=0.0
@@ -23,7 +23,7 @@ for ((i = 2; i <= n_tries*2; i*=2)); do
     for ((k = 1; k < n_avg; k++)); do
         result=$(./$exec_file $input)
         #get the execution time
-        exec_time=$(echo "$result" | grep "Total solver runtime:" | awk '{print $4}')
+        exec_time=$(echo "$result" | grep "Gaussian elimination time in CUDA:" | awk '{print $6}')
         sum_exec_time=$(echo "$sum_exec_time + $exec_time" | bc -l)
     done
     avg_seq_time=$(echo "$sum_exec_time / $n_avg" | bc -l)

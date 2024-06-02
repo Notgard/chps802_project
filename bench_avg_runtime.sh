@@ -1,5 +1,4 @@
 #!/usr/bin/bash
-#check for n_sudokus argument
 if [[ $# -lt 2 || $# -gt 2 ]] ; then
 	echo 'Wrong arguments provided, need filename and number of tries (nb threads to use in total for benchmarking)'
 	exit 1
@@ -8,7 +7,7 @@ exec_file="main"
 input=$1
 n_tries=$2
 n=0
-n_avg=10
+n_avg=3
 #make compile main solving C program
 make clean && make
 #set variables

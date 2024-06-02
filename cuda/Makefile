@@ -5,7 +5,7 @@ CFLAGS =
 
 # Source files
 CU_SRCS = dev_main_cuda.cu
-#CU_SRCS = old_main_cuda.cu
+#CU_SRCS = latest_main.cu
 C_SRCS = cuda_utils.c
 
 # Object files
@@ -14,7 +14,7 @@ C_OBJS = $(C_SRCS:.c=.o)
 
 # Executable
 TARGET = dev_main_cuda
-#TARGET = old_main_cuda
+#TARGET = latest_main
 
 # Default rule
 all: $(TARGET)
