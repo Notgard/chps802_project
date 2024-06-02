@@ -407,7 +407,7 @@ __global__ void find_pivot(double *d_linear_system, int n_rows, int n_cols, int 
             int row = idx + current_line + 1;
             shared_max[tid] = d_linear_system[row * n_cols + current_line];
             shared_idx[tid] = row;
-            // printf("[%d, %d] %.3f, ", row, current_line, shared_max[tid]);
+            printf("[%d, %d] %.3f, ", row, current_line, shared_max[tid]);
         }
         else
         {
@@ -443,7 +443,7 @@ __global__ void find_pivot(double *d_linear_system, int n_rows, int n_cols, int 
         while (atomicCAS(d_mutex, 0, 1) != 0)
             ; // lock
         // printf("%f > %f\n", shared_max[0], *d_max);
-        //printf("[%d] Max value: %f | %d\n", blockIdx.x, shared_max[0], shared_idx[0]);
+        printf("[%d] Max value: %f | %d\n", blockIdx.x, shared_max[0], shared_idx[0]);
         if (fabs(shared_max[0]) > fabs(*d_max))
         {
             *d_max = shared_max[0];
@@ -454,7 +454,6 @@ __global__ void find_pivot(double *d_linear_system, int n_rows, int n_cols, int 
 }
 
 // paralell selection of the max absolute value gaussian pivot
-template <int BLOCK_SIZE>
 __global__ void gauss_elimination(double *d_linear_system, int n_rows, int n_cols, int pivot_line)
 {
     // Thread ID
@@ -494,86 +493,126 @@ __global__ void gauss_elimination(double *d_linear_system, int n_rows, int n_col
     }
 }
 
-__global__ void full_gaussian_elimination(double *d_linear_system, int n_rows, int n_cols, int pivot_line)
+__global__ void full_gaussian_elimination(double *d_linear_system, int n_rows, int n_cols, int current_line, int *d_pivot_line, double *d_max, int *d_mutex)
 {
-    int idx = blockDim.x * blockIdx.x + threadIdx.x;
     extern __shared__ double shared_data[];
-    __shared__ int shared_idx[50];
+    
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    
+    double *shared_max = shared_data;
+    int *shared_idx = (int *)&shared_max[blockDim.x];
+    double *pivot_row = (double *)&shared_idx[blockDim.x];
+
+    *d_max = 0;
 
     int tid = threadIdx.x;
+    
     if (idx < n_rows)
     {
-        int col = (idx + pivot_line + 1) < n_rows ? (idx + pivot_line + 1) : (idx + pivot_line);
-        shared_data[tid] = d_linear_system[col * n_cols + pivot_line];
-        shared_idx[tid] = col;
+        if (idx < n_rows - current_line - 1) //load the values of the column below the current line
+        {
+            int row = idx + current_line + 1;
+            shared_max[tid] = d_linear_system[row * n_cols + current_line];
+            shared_idx[tid] = row;
+            // printf("[%d, %d] %.3f, ", row, current_line, shared_max[tid]);
+        }
+        else //load the value of the current line as default pivot
+        {
+            shared_max[tid] = d_linear_system[current_line * n_cols + current_line];
+            shared_idx[tid] = current_line;
+        }
+
         __syncthreads();
 
+        //thread block local reduction
         for (int stride = blockDim.x / 2; stride > 0; stride /= 2)
         {
-            if (tid < stride)
+            if (tid < stride && (tid + stride) < n_rows - current_line)
             {
-                float lhs = shared_data[tid];
-                float rhs = shared_data[tid + stride];
+                double lhs = shared_max[threadIdx.x];
+                double rhs = shared_max[threadIdx.x + stride];
                 if (fabs(lhs) < fabs(rhs))
                 {
-                    shared_data[tid] = rhs;
+                    // printf("shared_max[%d] = %.3f\n", tid, rhs);
+                    shared_max[tid] = rhs;
                     shared_idx[tid] = shared_idx[tid + stride]; // update the index
                 }
                 else
                 {
-                    shared_data[tid] = lhs;
+                    shared_max[tid] = lhs;
                 }
             }
             __syncthreads();
         }
     }
 
-    int max;
+    //thread block global reduction done by thread 0 of each block
+    if (tid == 0)
+    {
+        while (atomicCAS(d_mutex, 0, 1) != 0)
+            ; // lock
+        // printf("%f > %f\n", shared_max[0], *d_max);
+        //printf("[%d] Max value: %f | %d\n", blockIdx.x, shared_max[0], shared_idx[0]);
+        if (fabs(shared_max[0]) > fabs(*d_max))
+        {
+            *d_max = shared_max[0];
+            *d_pivot_line = shared_idx[0];
+        }
+        atomicExch(d_mutex, 0); // unlock
+    }
+
+    __syncthreads();
+
+    //swap rows
     if (idx == 0)
     {
-        max = shared_data[0];
-        if (shared_idx[0] != pivot_line)
+        int pivot_line = *d_pivot_line;
+        if (current_line != pivot_line)
         {
-            // swap rows
             for (int i = 0; i < n_cols; i++)
             {
-                double temp = d_linear_system[pivot_line * n_cols + i];
-                d_linear_system[pivot_line * n_cols + i] = d_linear_system[shared_idx[0] * n_cols + i];
-                d_linear_system[shared_idx[0] * n_cols + i] = temp;
+                double temp = d_linear_system[current_line * n_cols + i];
+                d_linear_system[current_line * n_cols + i] = d_linear_system[pivot_line * n_cols + i];
+                d_linear_system[pivot_line * n_cols + i] = temp;
             }
         }
     }
 
     __syncthreads();
 
+    //gaussian elimination
+
     int row = blockIdx.x * blockDim.x + threadIdx.x;
     int col = blockIdx.y * blockDim.y + threadIdx.y;
 
-    // Allocate shared memory for the pivot row
-    __shared__ double pivot_row[50];
+    //double pivot = d_linear_system[pivot_line * n_cols + pivot_line];
 
-    if (col < n_cols)
+    // Load the pivot row into shared memory using the first thread of each block
+    if (threadIdx.x == 0)
     {
-        // Load the pivot row into shared memory
-        if (row == pivot_line)
-        {
-            pivot_row[col] = d_linear_system[pivot_line * n_cols + col];
+        for(int i = 0; i < n_cols; i++) {
+            pivot_row[i] = d_linear_system[current_line * n_cols + i];
         }
     }
+
     __syncthreads();
 
-    if (row > pivot_line && row < n_rows && col < n_cols)
+    //make sure the thread grid is within the bounds of the matrix
+    if (col < n_cols && row > current_line && row < n_rows)
     {
-        // double factor = d_linear_system[row * n_cols + pivot_line] / pivot_row[pivot_line];
-        double factor = d_linear_system[row * n_cols + pivot_line] / d_linear_system[pivot_line * n_cols + pivot_line];
+        double factor = d_linear_system[row * n_cols + current_line] / pivot_row[current_line];
+
+        __syncthreads();
 
         // Perform Gaussian elimination for elements in rows below the pivot line
-        if (col >= pivot_line)
+        if (col >= current_line)
         {
-            // d_linear_system[row * n_cols + col] -= factor * pivot_row[col];
-            d_linear_system[row * n_cols + col] -= factor * d_linear_system[pivot_line * n_cols + col];
+            d_linear_system[row * n_cols + col] -= factor * pivot_row[col];
         }
+        __syncthreads();
     }
+
+    __syncthreads();
 }
 
 template <int BLOCK_SIZE>
@@ -725,10 +764,12 @@ void pivot_de_gauss(linear_system_t *h_linear_system)
     int sharedMemSize = (n + 1) * sizeof(double);
 
     size_t column_size = n; // size of data column since we operate on column at a time
-    auto grid = (column_size + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
-    auto block_size = THREADS_PER_BLOCK;
-    auto data_shared_mem = block_size;
-    auto index_shared_mem = block_size;
+    //auto grid = (column_size + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+    dim3 grid = (column_size + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+    //auto block_size = THREADS_PER_BLOCK;
+    dim3 block_size = THREADS_PER_BLOCK;
+    size_t data_shared_mem = THREADS_PER_BLOCK;
+    size_t index_shared_mem = THREADS_PER_BLOCK;
 
     cudaMallocCheckError((void **)&d_linear_system, h_size);
     cudaMallocCheckError((void **)&d_pivot_line, sizeof(int));
@@ -766,7 +807,7 @@ void pivot_de_gauss(linear_system_t *h_linear_system)
         cudaDeviceSynchronize();
 
         cudaMemcpy(&h_pivot_line, d_pivot_line, sizeof(int), cudaMemcpyDeviceToHost);
-        printf("Pivot line %d: %d\n", curr_line, h_pivot_line);
+        //printf("Pivot line %d: %d\n", curr_line, h_pivot_line);
 
         cudaMemcpy(h_linear_system->data, d_linear_system, h_size, cudaMemcpyDeviceToHost);
         if (pivot_line != h_pivot_line)
@@ -789,7 +830,7 @@ void pivot_de_gauss(linear_system_t *h_linear_system)
         cudaMemcpy(d_linear_system, h_linear_system->data, h_size, cudaMemcpyHostToDevice);
 
         // gauss_elimination<1024><<<grid, block_size, data_shared_mem*sizeof(double)>>>(d_linear_system, n, n + 1, pivot_line);
-        gauss_elimination<1024><<<gridSize, blockSize, sharedMemSize>>>(d_linear_system, n, n + 1, pivot_line);
+        gauss_elimination<<<gridSize, blockSize, sharedMemSize>>>(d_linear_system, n, n + 1, pivot_line);
         cudaDeviceSynchronize();
         cudaMemcpy(h_linear_system->data, d_linear_system, h_size, cudaMemcpyDeviceToHost);
         // print the h_linear_system->data
@@ -809,7 +850,6 @@ void pivot_de_gauss(linear_system_t *h_linear_system)
             fprintf(stderr, "GPUassert: %s\n", cudaGetErrorString(code));
             exit(EXIT_FAILURE);
         }
-        // break;
     }
     end = clock();
     elapsed = (double)(end - start) / CLOCKS_PER_SEC;
@@ -831,6 +871,8 @@ void pivot_de_gauss_v2(linear_system_t *h_linear_system)
 {
     double *d_linear_system = NULL;
     int *d_pivot_line = NULL;
+    double *d_max = NULL;
+    int *d_mutex = NULL;
 
     cudaError_t code;
     clock_t start, end;
@@ -841,10 +883,26 @@ void pivot_de_gauss_v2(linear_system_t *h_linear_system)
 
     int h_pivot_line;
 
+    const int nb_blocks = (h_size + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+
+    dim3 blockSize(THREADS_PER_BLOCK, THREADS_PER_BLOCK);
+    dim3 gridSize((n + blockSize.x - 1) / blockSize.x, ((n + 1) + blockSize.y - 1) / blockSize.y);
+    int sharedMemSize = (n + 1) * sizeof(double);
+
+    size_t row_size = n+1; // size of data column since we operate on column at a time
+    auto grid = (row_size + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+    auto block_size = THREADS_PER_BLOCK;
+    auto data_shared_mem = block_size;
+    auto index_shared_mem = block_size;
+    auto pivot_shared_mem = block_size;
+
     cudaMallocCheckError((void **)&d_linear_system, h_size);
     cudaMallocCheckError((void **)&d_pivot_line, sizeof(int));
+    cudaMallocCheckError((void **)&d_max, sizeof(double));
+    cudaMallocCheckError((void **)&d_mutex, sizeof(int));
 
     code = cudaMemcpy(d_linear_system, h_linear_system->data, h_size, cudaMemcpyHostToDevice);
+    code = cudaMemset(d_mutex, 0, sizeof(int));
 
     if (code != cudaSuccess)
     {
@@ -852,42 +910,37 @@ void pivot_de_gauss_v2(linear_system_t *h_linear_system)
         exit(EXIT_FAILURE);
     }
 
-    const int nb_blocks = (h_size + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+    auto total_shared_mem = pivot_shared_mem * sizeof(double) + data_shared_mem * sizeof(double) + index_shared_mem * sizeof(int);
 
-    dim3 blockSize(THREADS_PER_BLOCK, THREADS_PER_BLOCK);
-    dim3 gridSize((n + blockSize.x - 1) / blockSize.x, ((n + 1) + blockSize.y - 1) / blockSize.y);
-    int sharedMemSize = (n + 1) * sizeof(double);
+    printf("Number of blocks: %d\n", grid);
 
     start = clock();
-    for (int curr_line = 0; curr_line < n; curr_line++)
+    for (int curr_line = 0; curr_line < n - 1; curr_line++)
     {
         int pivot_line = curr_line;
 
-        gauss_elimination<1024><<<gridSize, blockSize, sharedMemSize>>>(d_linear_system, n, n + 1, pivot_line);
         cudaDeviceSynchronize();
 
-        code = cudaGetLastError();
+        full_gaussian_elimination<<<grid, block_size, total_shared_mem>>>(d_linear_system, n, n + 1, pivot_line, d_pivot_line, d_max, d_mutex);
 
+        //find_pivot<<<grid, block_size, data_shared_mem * sizeof(double) + index_shared_mem * sizeof(int)>>>(d_linear_system, n, n + 1, pivot_line, d_pivot_line, d_max, d_mutex);
+        //gauss_elimination<1024><<<gridSize, blockSize, sharedMemSize>>>(d_linear_system, n, n + 1, pivot_line);
+        
+        code = cudaGetLastError();
         if (code != cudaSuccess)
         {
             fprintf(stderr, "GPUassert: %s\n", cudaGetErrorString(code));
             exit(EXIT_FAILURE);
         }
+        
+        cudaDeviceSynchronize();
     }
     end = clock();
+
     elapsed = (double)(end - start) / CLOCKS_PER_SEC;
     printf("Gaussian elimination time in CUDA: %.5lf\n", elapsed);
 
     cudaMemcpy(h_linear_system->data, d_linear_system, h_size, cudaMemcpyDeviceToHost);
-    printf("Final linear system: \n");
-    for (int i = 0; i < n; i++)
-    {
-        for (int j = 0; j < n + 1; j++)
-        {
-            printf("%f ", h_linear_system->data[i * (n + 1) + j]);
-        }
-        printf("\n");
-    }
 }
 
 #define OUT_FILE "output.txt"
